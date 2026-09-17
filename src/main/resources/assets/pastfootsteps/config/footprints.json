@@ -1,0 +1,114 @@
+{
+  "schemaVersion": 1,
+  "entities": {
+    "Player": {
+      "style": "LOWRES_SQUARE",
+      "width": 0.38,
+      "length": 0.7
+    },
+    "Cow": {
+      "style": "LOWRES_SQUARE",
+      "width": 0.24,
+      "length": 0.28
+    },
+    "MushroomCow": {
+      "style": "LOWRES_SQUARE",
+      "width": 0.24,
+      "length": 0.28
+    },
+    "Pig": {
+      "style": "LOWRES_SQUARE",
+      "width": 0.24,
+      "length": 0.27
+    },
+    "Sheep": {
+      "style": "LOWRES_SQUARE",
+      "width": 0.24,
+      "length": 0.27
+    },
+    "EntityHorse": {
+      "style": "LOWRES_SQUARE",
+      "width": 0.25,
+      "length": 0.3
+    },
+    "Wolf": {
+      "style": "LOWRES_SQUARE",
+      "width": 0.32,
+      "length": 0.4
+    },
+    "Ozelot": {
+      "style": "LOWRES_SQUARE",
+      "width": 0.32,
+      "length": 0.4
+    },
+    "Chicken": {
+      "style": "LOWRES_SQUARE",
+      "width": 0.4,
+      "length": 0.5
+    },
+    "Creeper": {
+      "style": "LOWRES_SQUARE",
+      "width": 0.35,
+      "length": 0.4
+    },
+    "VillagerGolem": {
+      "style": "LOWRES_SQUARE",
+      "width": 0.35,
+      "length": 0.55
+    },
+    "Zombie": {
+      "style": "LOWRES_SQUARE",
+      "width": 0.38,
+      "length": 0.7
+    },
+    "PigZombie": {
+      "style": "LOWRES_SQUARE",
+      "width": 0.38,
+      "length": 0.7
+    },
+    "Skeleton": {
+      "style": "LOWRES_SQUARE",
+      "width": 0.38,
+      "length": 0.7
+    },
+    "Enderman": {
+      "style": "LOWRES_SQUARE",
+      "width": 0.38,
+      "length": 0.7
+    },
+    "Villager": {
+      "style": "LOWRES_SQUARE",
+      "width": 0.38,
+      "length": 0.7
+    },
+    "Witch": {
+      "style": "LOWRES_SQUARE",
+      "width": 0.38,
+      "length": 0.7
+    },
+    "Giant": {
+      "style": "LOWRES_SQUARE",
+      "width": 0.38,
+      "length": 0.7
+    }
+  },
+  "soundTypes": {
+    "sand": {
+      "lifetime": 300,
+      "opacity": 0.5
+    },
+    "snow": {
+      "lifetime": 100,
+      "opacity": 0.6
+    },
+    "grass": {
+      "lifetime": 200,
+      "opacity": 0.4
+    },
+    "gravel": {
+      "lifetime": 250,
+      "opacity": 0.35
+    }
+  },
+  "blocks": {}
+}

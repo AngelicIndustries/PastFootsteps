@@ -1,0 +1,11 @@
+{
+  "schemaVersion": 1,
+  "entities": {
+    "Boat": {
+      "material": "wood",
+      "vanillaSound": "step.wood",
+      "volume": 0.15,
+      "pitch": 1.0
+    }
+  }
+}

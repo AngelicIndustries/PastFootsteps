@@ -1,0 +1,59 @@
+{
+  "$schema": "http://json-schema.org/draft-07/schema#",
+  "$id": "https://github.com/JackOfNoneTrades/PastFootsteps/blob/main/docs/schemas/entities.schema.json",
+  "title": "Past Footsteps entity profiles",
+  "type": "object",
+  "additionalProperties": false,
+  "required": ["schemaVersion", "entities"],
+  "properties": {
+    "schemaVersion": { "const": 1 },
+    "entities": {
+      "type": "object",
+      "propertyNames": { "pattern": "^[A-Za-z0-9_.:-]{1,128}$" },
+      "additionalProperties": { "$ref": "#/definitions/profile" }
+    }
+  },
+  "definitions": {
+    "id": { "type": "string", "pattern": "^[A-Za-z0-9_.:-]{1,128}$" },
+    "profile": {
+      "type": "object",
+      "additionalProperties": false,
+      "properties": {
+        "enabled": { "type": "boolean", "default": true },
+        "parent": { "$ref": "#/definitions/id" },
+        "selector": { "$ref": "#/definitions/selector" },
+        "priority": { "type": "integer", "minimum": -10000, "maximum": 10000, "default": 0 },
+        "gait": { "$ref": "#/definitions/id" },
+        "strideMultiplier": { "type": "number", "minimum": 0.1, "maximum": 8 },
+        "childScale": { "type": "number", "minimum": 0.1, "maximum": 2 },
+        "runSpeed": { "type": "number", "exclusiveMinimum": 0, "maximum": 4 },
+        "volume": { "type": "number", "minimum": 0, "maximum": 4 }
+      },
+      "anyOf": [
+        { "required": ["gait"] },
+        { "required": ["parent"] },
+        { "required": ["enabled"], "properties": { "enabled": { "const": false } } }
+      ]
+    },
+    "selector": {
+      "type": "object",
+      "additionalProperties": false,
+      "properties": {
+        "entityId": { "$ref": "#/definitions/id" },
+        "class": {
+          "type": "string",
+          "maxLength": 256,
+          "pattern": "^[A-Za-z_$][A-Za-z0-9_$]*(\\.[A-Za-z_$][A-Za-z0-9_$]*){0,31}$"
+        },
+        "age": { "enum": ["adult", "child"] },
+        "horseType": { "enum": ["horse", "donkey", "mule", "zombie", "skeleton"] },
+        "skeletonType": { "enum": ["normal", "wither"] }
+      },
+      "anyOf": [
+        { "required": ["entityId"] },
+        { "required": ["class"] }
+      ],
+      "not": { "required": ["horseType", "skeletonType"] }
+    }
+  }
+}

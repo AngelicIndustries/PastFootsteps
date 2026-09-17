@@ -1,0 +1,41 @@
+PastFootsteps equipment accent provenance
+=========================================
+
+Rain accent
+-----------
+The event equipment.rain uses the already bundled Presence Footsteps
+water_stereofix/water_through recordings. They are byte-identical in the
+audited AET and Dynamic Surroundings copies, and originate from Presence
+Footsteps commit bed73687a68ce5fd02bb1a290fef8cbdf6980ceb. The PF MIT notice
+in ../presencefootsteps/LICENSE-MIT.txt applies. Credit: Hurricaaane / Presence Footsteps.
+
+Armor recordings
+----------------
+The armor/*.ogg recordings were transferred from the verified Dynamic
+Surroundings 3.6.2.0 source pin
+091248a8f88c2dc1c4a9f5fd2818072dcea49d64, via the byte-identical AET set.
+Dynamic Surroundings is MIT, copyright 2018 OreCruncher, but its CREDITS.md
+contains recording-specific notices that remain applicable here:
+
+* light_1..3: Samulis (now sgossner), Freesound Foley pack, CC BY 4.0.
+  https://freesound.org/people/sgossner/packs/18201/
+* medium_walk1..3: the same Samulis Foley pack, CC BY 4.0, plus "chain drop"
+  by satanicupsman, CC0.
+* heavy_walk*, heavy_run*: "Clanking Armor" by LordSane, attribution required.
+  Dynamic Surroundings refers to Nexus mod 24352 and its permissions. The
+  original permission page is unavailable, so this attribution is retained
+  without claiming blanket MIT coverage for those recordings.
+* heavy_foot*, crystal_*, and slime_*: the audited DS sounds.json and
+  CREDITS.md contain no asset-specific contrary notice. They remain under the
+  Dynamic Surroundings repository MIT license.
+
+The audio is not relicensed by this notice. The DS MIT text is preserved in
+DS-LICENSE-MIT.txt. Source and asset-specific notices:
+https://github.com/OreCruncher/DynamicSurroundings/blob/091248a8f88c2dc1c4a9f5fd2818072dcea49d64/CREDITS.md
+https://creativecommons.org/licenses/by/4.0/
+https://creativecommons.org/publicdomain/zero/1.0/
+https://freesound.org/people/satanicupsman/sounds/147589/
+https://www.nexusmods.com/skyrim/mods/24352/
+
+These recordings retain upstream conversion/editing, with no new audio edits
+in this migration.

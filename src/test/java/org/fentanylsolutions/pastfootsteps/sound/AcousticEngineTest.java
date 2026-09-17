@@ -1,0 +1,269 @@
+package org.fentanylsolutions.pastfootsteps.sound;
+
+import static org.junit.Assert.*;
+
+import java.io.ByteArrayInputStream;
+import java.io.File;
+import java.io.IOException;
+import java.io.InputStream;
+import java.io.InputStreamReader;
+import java.nio.charset.StandardCharsets;
+import java.nio.file.Files;
+import java.util.ArrayList;
+import java.util.Arrays;
+import java.util.Collections;
+import java.util.HashMap;
+import java.util.List;
+import java.util.Map;
+import java.util.Set;
+
+import net.minecraft.client.resources.IResource;
+import net.minecraft.client.resources.IResourceManager;
+import net.minecraft.client.resources.data.IMetadataSection;
+import net.minecraft.util.ResourceLocation;
+
+import org.junit.Rule;
+import org.junit.Test;
+import org.junit.rules.TemporaryFolder;
+
+import com.google.gson.JsonElement;
+import com.google.gson.JsonParser;
+
+public class AcousticEngineTest {
+
+    private final List<String> names = new ArrayList<>();
+    private final List<Float> volumes = new ArrayList<>();
+    private final List<Float> pitches = new ArrayList<>();
+    private final AcousticEngine engine = new AcousticEngine((name, volume, pitch, context) -> {
+        names.add(name);
+        volumes.add(volume);
+        pitches.add(pitch);
+        assertTrue(Float.isFinite(volume));
+        assertTrue(Float.isFinite(pitch));
+        assertTrue(volume >= 0);
+        assertTrue(pitch >= 0);
+    });
+    private final AcousticContext context = new AcousticContext(0, 0, 0, 1, 1);
+
+    @Rule
+    public final TemporaryFolder temporary = new TemporaryFolder();
+
+    private void load(String json) {
+        engine.load("test", new JsonParser().parse(json));
+    }
+
+    @Test
+    public void allBundledDefinitionsParseAndPlay() throws Exception {
+        String root = "/assets/presencefootsteps/config/acoustics/";
+        try (InputStreamReader reader = new InputStreamReader(
+            getClass().getResourceAsStream(root + "index.json"),
+            StandardCharsets.UTF_8)) {
+            for (JsonElement id : new JsonParser().parse(reader)
+                .getAsJsonArray()) {
+                String name = id.getAsString();
+                try (InputStreamReader acoustic = new InputStreamReader(
+                    getClass().getResourceAsStream(root + name + ".json"),
+                    StandardCharsets.UTF_8)) {
+                    engine.load(name, new JsonParser().parse(acoustic));
+                }
+                assertTrue(name, engine.has(name));
+                for (String event : new String[] { "walk", "run", "land", "jump", "wander", "stand", "up", "down_run",
+                    "swim" }) {
+                    engine.play(name, event, context);
+                    for (int i = 0; i < 100; i++) engine.tick();
+                }
+            }
+        }
+        assertTrue(names.size() > 200);
+    }
+
+    @Test
+    public void fallbackFollowsTransitionsAndStandingStaysSilent() {
+        load("{\"type\":\"events\",\"walk\":\"walk\",\"run\":\"run\",\"wander\":\"shuffle\"}");
+        engine.play("test", "up_run", context);
+        engine.play("test", "jump", context);
+        engine.play("test", "stand", context);
+        assertEquals(java.util.Arrays.asList("run", "shuffle"), names);
+        names.clear();
+        load("{\"type\":\"events\",\"walk\":\"walk\"}");
+        engine.play("test", "land", context);
+        assertEquals(java.util.Arrays.asList("walk"), names);
+    }
+
+    @Test
+    public void explicitEmptyAcousticsRemainOwnedAndSilent() {
+        load("{\"type\":\"events\",\"walk\":{\"type\":\"empty\"},\"run\":null}");
+        engine.play("test", "walk", context);
+        engine.play("test", "run", context);
+        assertTrue(engine.has("test"));
+        assertTrue(names.isEmpty());
+    }
+
+    @Test
+    public void weightedEntriesAlwaysChooseOneAndHonorZeroWeights() {
+        load(
+            "{\"type\":\"probability\",\"entries\":[{\"weight\":0,\"acoustic\":\"never\"},{\"acoustic\":\"a\"},{\"acoustic\":\"b\"}]}");
+        for (int i = 0; i < 200; i++) engine.play("test", "walk", context);
+        assertEquals(200, names.size());
+        assertFalse(names.contains("never"));
+        assertTrue(names.contains("a"));
+        assertTrue(names.contains("b"));
+        names.clear();
+        load("{\"type\":\"probability\",\"entries\":[{\"weight\":0,\"acoustic\":\"never\"}]}");
+        engine.play("test", "walk", context);
+        assertTrue(names.isEmpty());
+    }
+
+    @Test
+    public void percentagesDefaultsAndPerPlaybackVariation() {
+        load("{\"type\":\"basic\",\"name\":\"quiet\",\"volume\":1,\"pitch\":{\"min\":90,\"max\":110}}");
+        for (int i = 0; i < 20; i++) engine.play("test", "walk", context);
+        for (float volume : volumes) assertEquals(0.01f, volume, 0.00001f);
+        assertTrue(new java.util.HashSet<>(pitches).size() > 1);
+        load("{\"type\":\"basic\",\"name\":\"default\"}");
+        engine.play("test", "walk", context);
+        assertEquals(1f, volumes.get(volumes.size() - 1), 0.00001f);
+        assertEquals(1f, pitches.get(pitches.size() - 1), 0.00001f);
+    }
+
+    @Test
+    public void delayedSoundsKeepTheirContextAndClearOnlyPending() {
+        load("{\"type\":\"delayed\",\"delay\":{\"min\":100,\"max\":100},\"acoustic\":\"delayed\"}");
+        engine.play("test", "walk", new AcousticContext(0, 0, 0, 0.25f, 0.75f));
+        engine.tick();
+        assertTrue(names.isEmpty());
+        engine.tick();
+        assertEquals(1, names.size());
+        assertEquals(0.25f, volumes.get(0), 0.00001f);
+        assertEquals(0.75f, pitches.get(0), 0.00001f);
+        engine.play("test", "walk", context);
+        engine.clear();
+        engine.tick();
+        engine.tick();
+        assertEquals(1, names.size());
+        assertTrue(engine.has("test"));
+    }
+
+    @Test
+    public void invalidOverridePreservesDefinition() {
+        load("\"good\"");
+        try {
+            load("{\"type\":\"unrecognized\"}");
+            fail("invalid type accepted");
+        } catch (com.google.gson.JsonParseException expected) {}
+        engine.play("test", "walk", context);
+        assertEquals(java.util.Arrays.asList("good"), names);
+    }
+
+    @Test
+    public void contactsCreatedDuringTickDoNotAgeTheirDelayImmediately() {
+        load("{\"type\":\"delayed\",\"delay\":50,\"acoustic\":\"nextTick\"}");
+        engine.beginTick();
+        engine.play("test", "walk", context);
+        engine.tick();
+        assertTrue(names.isEmpty());
+        engine.beginTick();
+        engine.tick();
+        assertEquals(java.util.Arrays.asList("nextTick"), names);
+    }
+
+    @Test
+    public void invalidatedActorCannotPlayOrRescheduleDelayedSounds() {
+        java.util.concurrent.atomic.AtomicBoolean alive = new java.util.concurrent.atomic.AtomicBoolean(true);
+        AcousticContext owned = new AcousticContext(1, 2, 3, 1, 1, alive::get);
+        load("{\"type\":\"delayed\",\"delay\":50,\"acoustic\":\"obsolete\"}");
+        engine.play("test", "walk", owned);
+        engine.beginTick();
+        alive.set(false);
+        engine.tick();
+        engine.play("test", "walk", owned);
+        engine.tick();
+        assertTrue(names.isEmpty());
+        alive.set(true);
+        engine.tick();
+        assertTrue(names.isEmpty());
+    }
+
+    @Test
+    public void localAcousticsCanAddOrOverrideWithoutAnIndexAndRecoverMalformedEdits() throws Exception {
+        Resources resources = new Resources();
+        resources.add("config/acoustics/base.json", "\"pack\"");
+        File acoustics = temporary.newFolder("acoustics");
+        File base = new File(acoustics, "base.json");
+        Files.write(base.toPath(), "\"local\"".getBytes(StandardCharsets.UTF_8));
+        Files.write(new File(acoustics, "added.json").toPath(), "\"added\"".getBytes(StandardCharsets.UTF_8));
+
+        engine.reload(resources, Arrays.asList("base"), temporary.getRoot());
+        engine.play("base", "walk", context);
+        engine.play("added", "walk", context);
+        assertEquals(Arrays.asList("local", "added"), names);
+
+        names.clear();
+        Files.write(base.toPath(), "{\"type\":\"unknown\"}".getBytes(StandardCharsets.UTF_8));
+        engine.reload(resources, Arrays.asList("base"), temporary.getRoot());
+        engine.play("base", "walk", context);
+        assertEquals(Collections.singletonList("local"), names);
+
+        names.clear();
+        assertTrue(base.delete());
+        engine.reload(resources, Arrays.asList("base"), temporary.getRoot());
+        engine.play("base", "walk", context);
+        assertEquals(Collections.singletonList("pack"), names);
+    }
+
+    private static final class Resources implements IResourceManager {
+
+        private final Map<String, List<IResource>> layers = new HashMap<String, List<IResource>>();
+
+        void add(String path, String json) {
+            List<IResource> values = layers.get(path);
+            if (values == null) {
+                values = new ArrayList<IResource>();
+                layers.put(path, values);
+            }
+            values.add(new StringResource(json));
+        }
+
+        @Override
+        public Set<String> getResourceDomains() {
+            return Collections.singleton("presencefootsteps");
+        }
+
+        @Override
+        public IResource getResource(ResourceLocation location) throws IOException {
+            List<IResource> values = getAllResources(location);
+            return values.get(values.size() - 1);
+        }
+
+        @Override
+        public List<IResource> getAllResources(ResourceLocation location) throws IOException {
+            List<IResource> values = layers.get(location.getResourcePath());
+            if (values == null) throw new IOException("missing " + location);
+            return values;
+        }
+    }
+
+    private static final class StringResource implements IResource {
+
+        private final byte[] bytes;
+
+        StringResource(String value) {
+            bytes = value.getBytes(StandardCharsets.UTF_8);
+        }
+
+        @Override
+        public InputStream getInputStream() {
+            return new ByteArrayInputStream(bytes);
+        }
+
+        @Override
+        public boolean hasMetadata() {
+            return false;
+        }
+
+        @Override
+        public IMetadataSection getMetadata(String section) {
+            return null;
+        }
+    }
+}

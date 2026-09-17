@@ -1,0 +1,13 @@
+Footprint atlas provenance
+
+textures/footprints.png is the 256x32 footprint atlas from Dynamic Surroundings
+3.6.2.0, commit 091248a8f88c2dc1c4a9f5fd2818072dcea49d64, via An Extra Touch.
+The AET file is a lossless re-encoding of the same pixel data. Dynamic
+Surroundings' MIT license is included as DS-LICENSE-MIT.txt. Copyright 2018
+OreCruncher. The pinned CREDITS.md lists no separate footprint restriction.
+
+https://github.com/OreCruncher/DynamicSurroundings/tree/091248a8f88c2dc1c4a9f5fd2818072dcea49d64
+
+The new footprint consumer, clipping geometry and renderer use PF's resolved
+contacts. AET's FootprintManager, FootprintUtil and independent stride clock
+were not transplanted.

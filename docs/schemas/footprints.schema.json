@@ -1,0 +1,97 @@
+{
+  "$schema": "https://json-schema.org/draft/2020-12/schema",
+  "title": "Past Footsteps visual contact rules",
+  "type": "object",
+  "additionalProperties": false,
+  "required": [
+    "schemaVersion"
+  ],
+  "properties": {
+    "schemaVersion": {
+      "const": 1
+    },
+    "entities": {
+      "type": "object",
+      "additionalProperties": {
+        "type": "object",
+        "additionalProperties": false,
+        "properties": {
+          "enabled": {
+            "type": "boolean"
+          },
+          "style": {
+            "enum": [
+              "SHOE",
+              "SQUARE",
+              "HORSESHOE",
+              "BIRD",
+              "PAW",
+              "SQUARE_SOLID",
+              "LOWRES_SQUARE"
+            ],
+            "default": "LOWRES_SQUARE"
+          },
+          "width": {
+            "type": "number",
+            "minimum": 0.01,
+            "maximum": 2
+          },
+          "length": {
+            "type": "number",
+            "minimum": 0.01,
+            "maximum": 3
+          },
+          "density": {
+            "type": "number",
+            "minimum": 0,
+            "maximum": 1
+          }
+        }
+      }
+    },
+    "soundTypes": {
+      "type": "object",
+      "additionalProperties": {
+        "type": "object",
+        "additionalProperties": false,
+        "properties": {
+          "enabled": {
+            "type": "boolean"
+          },
+          "opacity": {
+            "type": "number",
+            "minimum": 0,
+            "maximum": 1
+          },
+          "lifetime": {
+            "type": "integer",
+            "minimum": 1,
+            "maximum": 12000
+          }
+        }
+      }
+    },
+    "blocks": {
+      "type": "object",
+      "additionalProperties": {
+        "type": "object",
+        "additionalProperties": false,
+        "properties": {
+          "enabled": {
+            "type": "boolean"
+          },
+          "opacity": {
+            "type": "number",
+            "minimum": 0,
+            "maximum": 1
+          },
+          "lifetime": {
+            "type": "integer",
+            "minimum": 1,
+            "maximum": 12000
+          }
+        }
+      }
+    }
+  }
+}

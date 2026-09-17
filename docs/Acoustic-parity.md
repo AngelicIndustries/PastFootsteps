@@ -1,0 +1,33 @@
+# Acoustic and material parity
+
+The bundled acoustic model supports the MIT PF node shapes used by this port: event selectors, simultaneous layers,
+weighted/probability choices, chance, delays, basic sounds, and explicit silence. `none` now uses the explicit `empty`
+node; `empty`, `silent`, and JSON `null` can deliberately mute a resolved event without making it an unresolved mapping.
+That distinction lets the client suppress a channel it owns while still retaining native fallback for absent or invalid
+acoustics.
+
+Material maps continue to use 1.7 block registry names and metadata. The reader also accepts vanilla block keys without
+the `minecraft:` prefix and modern PF primitive spellings such as `minecraft:block.stone.step`. Modern block-state/tag
+selectors cannot be translated reliably to 1.7 metadata and are not supported.
+
+Biome variance is active: `MaterialLibrary` resolves numeric biome IDs first, then the lowercase 1.7 display name,
+underscore form, and `minecraft:` underscore form. The bundled map covers the vanilla 1.7 IDs with small volume/pitch
+changes; modded biomes remain neutral until a resource pack maps them. The controller smooths those values per tick.
+
+`variator.json` is intentionally not active. Its cached MIT counterpart belongs to the retired motion generator, while
+this port's stride, run threshold, idle behavior, ladder stride, and jump/landing policy live in the current tracker and
+Forge settings. It remains packaged only to avoid presenting a removed resource as a missing file.
+
+## Local material and acoustic corrections
+
+On resource reload, optional local JSON layers under the mod configuration directory apply after resource packs:
+
+- `profiles/blockmap.json`, `profiles/primitivemap.json`, and `profiles/biomevariancemap.json` use the same object
+  forms as their bundled counterparts.
+- Each `acoustics/<id>.json` file is an acoustic definition. These files may override an indexed definition or add a
+  new material ID without editing `index.json`.
+
+Local files are limited to 1 MiB; at most 128 acoustic files are considered in lexical filename order. Their JSON is
+strict (no duplicate keys or trailing data) and each file is decoded as one atomic layer. During an in-place malformed
+edit, the previous valid version of that same file remains active. Removing the file removes its local layer on the next
+reload, exposing the resource-pack definition or no definition.

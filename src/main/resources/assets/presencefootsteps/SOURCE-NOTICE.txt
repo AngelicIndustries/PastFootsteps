@@ -1,0 +1,27 @@
+Presence Footsteps resource provenance
+======================================
+
+Acoustic definitions, biome variance data, variator data, sounds.json, and
+audio files were copied from Sollace/Presence-Footsteps tag
+1.12.3+1.21.11, commit d0d860591287656244e7236a9131004d1d0ddee6:
+
+https://github.com/Sollace/Presence-Footsteps/tree/d0d860591287656244e7236a9131004d1d0ddee6
+
+The Minecraft 1.7 registry block map and primitive fallback map were copied
+from the same repository at commit
+08cc8a0b3d1225f6b781e8a0aa5e79ed1c90f927:
+
+https://github.com/Sollace/Presence-Footsteps/tree/08cc8a0b3d1225f6b781e8a0aa5e79ed1c90f927
+
+Both pinned source revisions contain the MIT license reproduced in
+LICENSE-MIT.txt. No resources from the project's later PolyForm Shield era
+are included here.
+
+The resource namespace remains "presencefootsteps" and the bundled sound
+event names retain their "pf_presence" prefix for compatibility with
+Presence Footsteps sound packs.
+
+PastFootsteps adaptations: sound events use the 1.7.10 player category.
+The Forge movement, material and acoustic adapters implement the MIT-era
+PF substrate and acoustic models using Minecraft 1.7.10 APIs. Modern vanilla
+sound names without 1.7 equivalents are mapped to similar bundled sounds.

@@ -1,0 +1,71 @@
+{
+  "schemaVersion": 1,
+  "gaits": {
+    "biped": {
+      "walk": [
+        { "footId": "left", "phase": 0.5, "lateral": 0.25, "forward": 0.0 },
+        { "footId": "right", "phase": 1.0, "lateral": -0.25, "forward": 0.0 }
+      ],
+      "run": [
+        { "footId": "left", "phase": 0.5, "lateral": 0.25, "forward": 0.0 },
+        { "footId": "right", "phase": 1.0, "lateral": -0.25, "forward": 0.0 }
+      ]
+    },
+    "quadruped": {
+      "walk": [
+        { "footId": "hind_left", "phase": 0.25, "lateral": 0.28, "forward": -0.34 },
+        { "footId": "front_left", "phase": 0.5, "lateral": 0.28, "forward": 0.34 },
+        { "footId": "hind_right", "phase": 0.75, "lateral": -0.28, "forward": -0.34 },
+        { "footId": "front_right", "phase": 1.0, "lateral": -0.28, "forward": 0.34 }
+      ],
+      "run": [
+        { "footId": "hind_left", "phase": 0.5, "lateral": 0.28, "forward": -0.34 },
+        { "footId": "front_right", "phase": 0.5, "lateral": -0.28, "forward": 0.34 },
+        { "footId": "front_left", "phase": 1.0, "lateral": 0.28, "forward": 0.34 },
+        { "footId": "hind_right", "phase": 1.0, "lateral": -0.28, "forward": -0.34 }
+      ]
+    },
+    "paw_quadruped": {
+      "walk": [
+        { "footId": "hind_left_paw", "phase": 0.25, "lateral": 0.28, "forward": -0.30 },
+        { "footId": "front_left_paw", "phase": 0.50, "lateral": 0.28, "forward": 0.30 },
+        { "footId": "hind_right_paw", "phase": 0.75, "lateral": -0.28, "forward": -0.30 },
+        { "footId": "front_right_paw", "phase": 1.00, "lateral": -0.28, "forward": 0.30 }
+      ],
+      "run": [
+        { "footId": "hind_left_paw", "phase": 0.50, "lateral": 0.28, "forward": -0.30 },
+        { "footId": "front_right_paw", "phase": 0.50, "lateral": -0.28, "forward": 0.30 },
+        { "footId": "front_left_paw", "phase": 1.00, "lateral": 0.28, "forward": 0.30 },
+        { "footId": "hind_right_paw", "phase": 1.00, "lateral": -0.28, "forward": -0.30 }
+      ]
+    },
+    "hoof_quadruped": {
+      "walk": [
+        { "footId": "hind_left_hoof", "phase": 0.25, "lateral": 0.30, "forward": -0.38 },
+        { "footId": "front_left_hoof", "phase": 0.50, "lateral": 0.30, "forward": 0.38 },
+        { "footId": "hind_right_hoof", "phase": 0.75, "lateral": -0.30, "forward": -0.38 },
+        { "footId": "front_right_hoof", "phase": 1.00, "lateral": -0.30, "forward": 0.38 }
+      ],
+      "run": [
+        { "footId": "hind_left_hoof", "phase": 0.50, "lateral": 0.30, "forward": -0.38 },
+        { "footId": "front_right_hoof", "phase": 0.50, "lateral": -0.30, "forward": 0.38 },
+        { "footId": "front_left_hoof", "phase": 1.00, "lateral": 0.30, "forward": 0.38 },
+        { "footId": "hind_right_hoof", "phase": 1.00, "lateral": -0.30, "forward": -0.38 }
+      ]
+    },
+    "horse": {
+      "walk": [
+        { "footId": "hind_left_hoof", "phase": 0.25, "lateral": 0.32, "forward": -0.46 },
+        { "footId": "front_left_hoof", "phase": 0.50, "lateral": 0.32, "forward": 0.46 },
+        { "footId": "hind_right_hoof", "phase": 0.75, "lateral": -0.32, "forward": -0.46 },
+        { "footId": "front_right_hoof", "phase": 1.00, "lateral": -0.32, "forward": 0.46 }
+      ],
+      "run": [
+        { "footId": "hind_left_hoof", "phase": 0.50, "lateral": 0.32, "forward": -0.46 },
+        { "footId": "front_right_hoof", "phase": 0.50, "lateral": -0.32, "forward": 0.46 },
+        { "footId": "front_left_hoof", "phase": 1.00, "lateral": 0.32, "forward": 0.46 },
+        { "footId": "hind_right_hoof", "phase": 1.00, "lateral": -0.32, "forward": -0.46 }
+      ]
+    }
+  }
+}

@@ -1,0 +1,21 @@
+{
+	"modListVersion": 2,
+	"modList": [{
+		"modid": "${modId}",
+		"name": "${modName}",
+		"description": "Material footsteps, equipment accents and footprints for players and supported mobs on Forge 1.7.10. Works on any server, with optional server motion support.",
+		"version": "${modVersion}",
+		"mcversion": "${minecraftVersion}",
+		"url": "https://github.com/JackOfNoneTrades/PastFootsteps",
+		"updateUrl": "",
+		"authorList": ["jack"],
+		"credits": "Hurricaaane, Sollace and the Presence Footsteps contributors",
+		"logoFile": "assets/pastfootsteps/icon.png",
+		"screenshots": [],
+		"parent": "",
+		"requiredMods": [],
+		"dependencies": [],
+		"dependants": [],
+		"useDependencyInformation": false
+	}]
+}
