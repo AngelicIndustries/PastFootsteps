@@ -46,6 +46,9 @@ dependencies {
     runtimeOnlyNonPublishable("org.fentanylsolutions.fentlib:FentLib:04136bd-snapshot:dev")
     runtimeOnlyNonPublishable("com.github.GTNewHorizons:ModularUI2:2.3.90-1.7.10:dev")
 
+    // Local AET build for testing the walking-feature migration together.
+    runtimeOnlyNonPublishable(files("../AnExtraTouch/build/libs/anextratouch-0.0.13-dev.jar"))
+
     // Compile + runtime
 
     // Pure compile
