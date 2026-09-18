@@ -95,19 +95,19 @@
   "soundTypes": {
     "sand": {
       "lifetime": 300,
-      "opacity": 0.5
+      "opacity": 0.4
     },
     "snow": {
       "lifetime": 100,
-      "opacity": 0.6
+      "opacity": 0.48
     },
     "grass": {
       "lifetime": 200,
-      "opacity": 0.4
+      "opacity": 0.32
     },
     "gravel": {
       "lifetime": 250,
-      "opacity": 0.35
+      "opacity": 0.28
     }
   },
   "blocks": {}

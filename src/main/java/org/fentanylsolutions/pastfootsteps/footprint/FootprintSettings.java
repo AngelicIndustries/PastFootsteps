@@ -7,7 +7,7 @@ public final class FootprintSettings {
 
     public static boolean enabled = true;
     public static int maximum = 2000, lifetime = 200, distance = 32;
-    public static float opacity = 0.4f, size = 1, density = 1, rainLifetime = 0.4f, snowLifetime = 0.6f;
+    public static float opacity = 0.32f, size = 1, density = 1, rainLifetime = 0.4f, snowLifetime = 0.6f;
 
     private FootprintSettings() {}
 
@@ -19,7 +19,7 @@ public final class FootprintSettings {
             .getInt("lifetime", category, 200, 1, 12000, "Default print lifetime in ticks (20 per second).");
         distance = config.getInt("distance", category, 32, 8, 96, "Maximum distance for drawing prints.");
         opacity = config
-            .getFloat("opacity", category, 0.4f, 0, 1, "Default opacity before surface-specific overrides.");
+            .getFloat("opacity", category, 0.32f, 0, 1, "Default opacity before surface-specific overrides.");
         size = config
             .getFloat("size", category, 1, 0.1f, 4, "Print size multiplier. Foot positions still follow the gait.");
         density = config.getFloat(

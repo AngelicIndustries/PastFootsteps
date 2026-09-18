@@ -10,7 +10,7 @@ Open **Mods > PastFootsteps > Config > Footprints** for ordinary settings:
 | `maximum` | `2000` | Retained print cap, from 0 to 10000. Zero disables prints. Oldest prints are removed first. |
 | `lifetime` | `200` | Default lifetime in ticks, from 1 to 12000. Twenty ticks is one second. |
 | `distance` | `32` | Maximum rendering distance in blocks, from 8 to 96. Actor discovery has its own range. |
-| `opacity` | `0.4` | Default opacity from 0 to 1, before explicit surface overrides. |
+| `opacity` | `0.32` | Default opacity from 0 to 1, before explicit surface overrides. |
 | `size` | `1` | Visual size multiplier from 0.1 to 4. Does not change foot positions or gait. |
 | `density` | `1` | Fraction of contacts retained from 0 to 1. Selection is stable for each contact. |
 | `rainLifetime` | `0.4` | Lifetime multiplier when the print is created in exposed rain. |
@@ -45,7 +45,7 @@ Entity keys use the exact registered IDs used by [entity profiles](Resource-pack
 
 `width` and `length` multiply the actor's actual width and the CFG size. Babies therefore use their current smaller body size automatically. Width ranges from 0.01 to 2 and length from 0.01 to 3. Gait lateral/forward offsets control stance. Available atlas styles are `SHOE`, `SQUARE`, `HORSESHOE`, `BIRD`, `PAW`, `SQUARE_SOLID` and `LOWRES_SQUARE`. All bundled entity rules use `LOWRES_SQUARE`, the same footprint used by AET. Omitting `style` also selects `LOWRES_SQUARE`; other atlas styles remain available through explicit overrides.
 
-Block-and-metadata rules take priority over whole-block rules, then vanilla step-sound types. An explicit disabled rule blocks prints even when a lower-priority rule permits them. Omitted surface opacity/lifetime uses the CFG default. Default types are sand (300 ticks, 0.5 opacity), snow (100, 0.6), grass (200, 0.4) and gravel (250, 0.35). All other surfaces need a rule.
+Block-and-metadata rules take priority over whole-block rules, then vanilla step-sound types. An explicit disabled rule blocks prints even when a lower-priority rule permits them. Omitted surface opacity/lifetime uses the CFG default. Default types are sand (300 ticks, 0.4 opacity), snow (100, 0.48), grass (200, 0.32) and gravel (250, 0.28). All other surfaces need a rule.
 
 ## Rendering
 
