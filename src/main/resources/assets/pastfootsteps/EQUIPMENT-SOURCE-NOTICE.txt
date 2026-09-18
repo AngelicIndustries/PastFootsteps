@@ -39,3 +39,8 @@ https://www.nexusmods.com/skyrim/mods/24352/
 
 These recordings retain upstream conversion/editing, with no new audio edits
 in this migration.
+
+Subsequent positional-audio adaptation: the light_1..3 recordings also have
+mono downmixes in ../presencefootstepsmono/sounds/armor/. Those modified copies
+retain the Samulis / sgossner attribution and CC BY 4.0 terms above. The original
+stereo recordings remain in the presencefootsteps namespace.

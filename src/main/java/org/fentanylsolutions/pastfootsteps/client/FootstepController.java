@@ -41,6 +41,7 @@ import org.fentanylsolutions.pastfootsteps.profile.EntityProfile;
 import org.fentanylsolutions.pastfootsteps.profile.ProfileLibrary;
 import org.fentanylsolutions.pastfootsteps.sound.AcousticContext;
 import org.fentanylsolutions.pastfootsteps.sound.SoundEngine;
+import org.fentanylsolutions.pastfootsteps.sound.SoundNames;
 import org.fentanylsolutions.pastfootsteps.world.MaterialLibrary;
 import org.fentanylsolutions.pastfootsteps.world.SurfaceResolver;
 import org.fentanylsolutions.pastfootsteps.world.SurfaceResolver.Surface;
@@ -577,6 +578,7 @@ public final class FootstepController implements IResourceManagerReloadListener 
             z,
             volume * Config.volume * source * state.volume * state.profile.volume,
             state.pitch,
+            actor == Minecraft.getMinecraft().thePlayer,
             () -> state.active && state.generation == generation
                 && eligible(actor)
                 && actor.worldObj.getEntityByID(actor.getEntityId()) == actor);
@@ -589,53 +591,17 @@ public final class FootstepController implements IResourceManagerReloadListener 
             || !context.isValid()
             || name == null
             || voicesThisTick >= Config.maxSoundsPerTick) return;
-        String soundName = name;
-        if (soundName.startsWith("@")) soundName = soundName.substring(1);
-        if (soundName.startsWith("pf_presence.")) soundName = "presencefootsteps:" + soundName;
-        switch (soundName) {
-            case "minecraft:block.ladder.step":
-                soundName = "minecraft:step.ladder";
-                break;
-            case "minecraft:entity.player.swim":
-                soundName = "minecraft:game.player.swim";
-                break;
-            case "minecraft:block.fire.extinguish":
-                soundName = "minecraft:random.fizz";
-                break;
-            case "minecraft:block.copper.step":
-            case "minecraft:block.copper.break":
-            case "minecraft:block.heavy_core.step":
-                soundName = "presencefootsteps:pf_presence.metalbar.metalbar_walk";
-                break;
-            case "minecraft:block.amethyst_block.step":
-            case "minecraft:block.amethyst_block.hit":
-            case "minecraft:block.amethyst_block.break":
-                soundName = "presencefootsteps:pf_presence.glass.glass_hit";
-                break;
-            case "minecraft:block.soul_soil.step":
-            case "minecraft:block.soul_soil.place":
-                soundName = "presencefootsteps:pf_presence.quicksand.quicksand_walk";
-                break;
-            case "minecraft:block.slime_block.step":
-            case "minecraft:block.slime_block.break":
-            case "minecraft:block.honey_block.step":
-            case "minecraft:block.honey_block.break":
-                soundName = "presencefootsteps:pf_presence.mud.mud_walk";
-                break;
-            case "minecraft:block.scaffolding.step":
-            case "minecraft:block.creaking_heart.step":
-            case "minecraft:block.creaking_heart.break":
-                soundName = "presencefootsteps:pf_presence.squeakywood.squeakywood_walk";
-                break;
-            default:
-                break;
-        }
+        Minecraft mc = Minecraft.getMinecraft();
+        ResourceLocation soundName = SoundNames.resolve(
+            name,
+            context.localPlayer,
+            location -> mc.getSoundHandler()
+                .getSound(location) != null);
         voicesThisTick++;
-        Minecraft.getMinecraft()
-            .getSoundHandler()
+        mc.getSoundHandler()
             .playSound(
                 new PositionedSoundRecord(
-                    new ResourceLocation(soundName),
+                    soundName,
                     volume,
                     pitch,
                     (float) context.x,

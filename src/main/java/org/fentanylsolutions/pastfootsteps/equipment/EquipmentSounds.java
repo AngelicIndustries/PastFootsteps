@@ -182,22 +182,19 @@ public final class EquipmentSounds {
 
     private void play(String acoustic, ContactKind kind, AcousticContext base, float volume, float pitch) {
         if (volume <= 0) return;
-        engine.play(
-            acoustic,
-            kind.acousticKey,
-            new AcousticContext(base.x, base.y, base.z, base.volume * volume, base.pitch * pitch, base::isValid));
+        engine.play(acoustic, kind.acousticKey, base.scale(volume, pitch));
     }
 
     private void loadBuiltinAcoustics() {
-        engine.load("rain", basic("presencefootsteps:equipment.rain"));
+        engine.load("rain", basic("equipment.rain"));
         for (String category : new String[] { "light", "medium", "heavy", "crystal", "slime" }) {
-            engine.load("foot." + category, basic("presencefootsteps:equipment.armor." + category + ".foot"));
+            engine.load("foot." + category, basic("equipment.armor." + category + ".foot"));
             JsonObject body = new JsonObject();
             body.addProperty("type", "events");
-            body.add("walk", basic("presencefootsteps:equipment.armor." + category + ".body"));
-            body.add("run", basic("presencefootsteps:equipment.armor." + category + ".run"));
-            body.add("land", basic("presencefootsteps:equipment.armor." + category + ".body"));
-            body.add("jump", basic("presencefootsteps:equipment.armor." + category + ".body"));
+            body.add("walk", basic("equipment.armor." + category + ".body"));
+            body.add("run", basic("equipment.armor." + category + ".run"));
+            body.add("land", basic("equipment.armor." + category + ".body"));
+            body.add("jump", basic("equipment.armor." + category + ".body"));
             engine.load("body." + category, body);
         }
         // AET's optional Et Futurum mapping is retained as an explicitly silent category until a pack supplies it.

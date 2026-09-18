@@ -77,6 +77,16 @@ Delay values are milliseconds, rounded up to game ticks. Ranges use `{"min": 90,
 Missing running/landing/climbing events fall back through the Presence Footsteps movement states; missing `stand`
 stays silent. Newer vanilla sounds referenced by the bundled definitions use similar sounds available in 1.7.
 
+Relative sound names beginning with `pf_presence.` or `equipment.` select the ordinary `presencefootsteps` sound
+event for your own player and its `presencefootstepsmono` counterpart for other players and mobs. Mono recordings
+allow those nearby sounds to follow the actor's position. If no mono event is registered, playback falls back to
+the ordinary event. This also applies to delayed contacts and equipment/rain accents.
+
+Packs can override `assets/presencefootstepsmono/sounds.json` and its audio files for remote actors. Supply mono
+recordings there. Explicitly namespaced acoustic sound names, such as `presencefootsteps:custom.step` or
+`example:custom.step`, keep that exact namespace for all actors; use a relative PF name when automatic selection
+is desired. Existing native 1.7 sound names retain their normal routing.
+
 `variator.json` remains an empty compatibility placeholder. In the cached MIT PF source it configured its old motion
 generator; this port uses the Forge movement controls and its contact tracker instead. It is not read, so values placed
 there do not silently create a second stride, run, or idle policy.

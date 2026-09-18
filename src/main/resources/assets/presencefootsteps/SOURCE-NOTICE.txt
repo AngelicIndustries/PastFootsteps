@@ -17,11 +17,30 @@ Both pinned source revisions contain the MIT license reproduced in
 LICENSE-MIT.txt. No resources from the project's later PolyForm Shield era
 are included here.
 
-The resource namespace remains "presencefootsteps" and the bundled sound
-event names retain their "pf_presence" prefix for compatibility with
-Presence Footsteps sound packs.
+The original resource namespace remains "presencefootsteps" and the bundled
+sound event names retain their "pf_presence" prefix for compatibility with
+Presence Footsteps sound packs. The imported mono assets use the separate
+"presencefootstepsmono" namespace.
 
 PastFootsteps adaptations: sound events use the 1.7.10 player category.
 The Forge movement, material and acoustic adapters implement the MIT-era
 PF substrate and acoustic models using Minecraft 1.7.10 APIs. Modern vanilla
 sound names without 1.7 equivalents are mapped to similar bundled sounds.
+
+The additional presencefootstepsmono sound namespace was imported from
+Sollace/Presence-Footsteps commit
+c009d4a9fd10e9c3fa8bc75238bf26267f17ca1c:
+
+https://github.com/Sollace/Presence-Footsteps/tree/c009d4a9fd10e9c3fa8bc75238bf26267f17ca1c
+
+The 455 OGG files imported from that namespace are byte-identical MIT-source
+assets and are all mono. Its imported sound event categories were changed
+from "master" to the existing 1.7.10 "player" category. Local aliases cover
+rain, armor, crumbly stone, fire, and waxed surfaces. Existing mono armor
+recordings are referenced in the original namespace without copying them.
+
+Three additional light_1..3 armor files are mono downmixes of the existing
+stereo recordings, encoded with FFmpeg/libvorbis at quality 5. These modified
+copies retain the original Samulis / sgossner attribution and CC BY 4.0
+terms described in ../pastfootsteps/EQUIPMENT-SOURCE-NOTICE.txt. They are not
+covered by the PF MIT asset license. Original stereo recordings are unchanged.
