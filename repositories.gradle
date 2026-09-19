@@ -5,4 +5,7 @@ repositories {
         name = "Fent Maven"
         url "https://maven.fentanylsolutions.org/releases"
     }
+    maven {
+        url = uri("https://maven.fentanylsolutions.org/github/")
+    }
 }
