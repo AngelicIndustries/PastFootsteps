@@ -309,7 +309,7 @@ pause/reload cancellation, or the separate distance-arrival expiry.
 Bundled entity profiles cover `Player`; bipedal `Zombie`, `Skeleton`, `PigZombie`, `Enderman`, `Witch`, `Villager`,
 `VillagerGolem`, `Giant`, `LavaSlime` (magma cube), `Slime` and `Chicken`; four-legged `Creeper`, `Cow`, `MushroomCow`,
 `Pig`, `Sheep`, `Wolf`, and `Ozelot`; and
-`EntityHorse`. The horse gait uses diagonal running contact groups for a trot. Paw and hoof gaits use different
+`EntityHorse`. The horse gait uses diagonal running contact groups for a trot, with longer strides at high speed. Paw and hoof gaits use different
 front/rear geometry, and every supplied profile retains child stride scaling. Other registered entities keep native
 sounds unless explicitly matched, including spiders, bats, squids, ghasts, and flying bosses.
 
@@ -414,6 +414,25 @@ IDs, with 1 to 16 feet. Identical phases make a simultaneous contact group, such
 Distinct phases must be at least `0.000001` apart, including across the cycle boundary; phases range from
 `0.000001` to `1`. Gait changes between walking and running occur at cycle boundaries. One landing groups all feet
 and scales its sound contribution, rather than multiplying the volume by the number of feet.
+
+An optional gait-level `fastStride` object lengthens ground contact cycles as movement speeds up:
+
+```json
+"fastStride": { "startSpeed": 0.316227766, "fullSpeed": 0.6, "multiplier": 1.5 }
+```
+
+Speeds are horizontal blocks per client tick, using the tracker's smoothed displacement. Below `startSpeed`,
+stride length is unchanged; at or above `fullSpeed`, it is multiplied by `multiplier`. Between them, a smooth
+curve preserves the current contact phase and foot order. This is additional to the entity's `strideMultiplier`
+and ordinary running adjustment. Swimming and climbing do not use this correction. Both speeds must be between
+0 and 16, with `fullSpeed` strictly greater than `startSpeed`; `multiplier` must be between 1 and 8. Omit the
+object (or use multiplier 1) to retain constant stride length. Gait layers replace the entire gait definition,
+so include its `walk` and `run` arrays in an override.
+
+Only the bundled `horse` gait enables this by default. Its high-speed correction follows the intent of MIT PF's
+horse adjustment, adapted to our four-foot contact cycle rather than copying the upstream distance multiplier.
+All horse variants sharing this gait use it, whether ridden or moving independently. Custom gait users can
+opt in without Java code. The correction changes cadence, not movement speed or animation.
 
 The machine-readable schemas are [entities.schema.json](schemas/entities.schema.json) and
 [gaits.schema.json](schemas/gaits.schema.json).

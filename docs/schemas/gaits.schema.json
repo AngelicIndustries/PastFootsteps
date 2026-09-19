@@ -20,12 +20,24 @@
       "properties": {
         "enabled": { "type": "boolean", "default": true },
         "walk": { "$ref": "#/definitions/contacts" },
-        "run": { "$ref": "#/definitions/contacts" }
+        "run": { "$ref": "#/definitions/contacts" },
+        "fastStride": { "$ref": "#/definitions/fastStride" }
       },
       "anyOf": [
         { "required": ["walk"] },
         { "required": ["enabled"], "properties": { "enabled": { "const": false } } }
       ]
+    },
+    "fastStride": {
+      "type": "object",
+      "additionalProperties": false,
+      "required": ["startSpeed", "fullSpeed", "multiplier"],
+      "description": "Ground-only smooth stride extension. fullSpeed must be greater than startSpeed (also checked by the loader).",
+      "properties": {
+        "startSpeed": { "type": "number", "minimum": 0, "maximum": 16 },
+        "fullSpeed": { "type": "number", "exclusiveMinimum": 0, "maximum": 16 },
+        "multiplier": { "type": "number", "minimum": 1, "maximum": 8 }
+      }
     },
     "contacts": {
       "type": "array",

@@ -286,6 +286,48 @@ public class ProfileLibraryTest {
     }
 
     @Test
+    public void validFastStrideLoadsAndInvalidHigherLayerRetainsIt() {
+        Resources resources = validDefaults();
+        resources.add(
+            "config/gaits.json",
+            "{\"schemaVersion\":1,\"gaits\":{\"biped\":{\"fastStride\":{\"startSpeed\":0.3,\"fullSpeed\":0.8,\"multiplier\":1.5},\"walk\":["
+                + contact("left", 0.5)
+                + ","
+                + contact("right", 1.0)
+                + "]}}}");
+        resources.add(
+            "config/gaits.json",
+            "{\"schemaVersion\":1,\"gaits\":{\"biped\":{\"fastStride\":{\"startSpeed\":0.8,\"fullSpeed\":0.3,\"multiplier\":1.5},\"walk\":["
+                + contact("left", 0.5)
+                + ","
+                + contact("right", 1.0)
+                + "]}}}");
+
+        ProfileLibrary library = load(resources);
+        GaitDefinition.FastStride stride = library.resolve("Player").gait.fastStride;
+        assertNotNull(stride);
+        assertEquals(0.3, stride.startSpeed, 0.0);
+        assertEquals(0.8, stride.fullSpeed, 0.0);
+        assertEquals(1.5, stride.multiplier, 0.0);
+        assertTrue(hasDiagnostic(library, "fullSpeed"));
+    }
+
+    @Test
+    public void bundledHorseUsesOnlyTheFastStrideTuning() throws IOException {
+        Resources resources = new Resources();
+        resources.add("config/gaits.json", resource("/assets/pastfootsteps/config/gaits.json"));
+        resources.add("config/entities.json", resource("/assets/pastfootsteps/config/entities.json"));
+        ProfileLibrary library = load(resources);
+        GaitDefinition.FastStride stride = library.resolve("EntityHorse").gait.fastStride;
+        for (String id : new String[] { "biped", "quadruped", "paw_quadruped", "hoof_quadruped" })
+            assertNull(library.gait(id).fastStride);
+        assertNotNull(stride);
+        assertEquals(0.316227766, stride.startSpeed, 0.0);
+        assertEquals(0.6, stride.fullSpeed, 0.0);
+        assertEquals(1.5, stride.multiplier, 0.0);
+    }
+
+    @Test
     public void bundledVanillaProfilesUseOnlySupportedGroundGaits() throws IOException {
         Resources resources = new Resources();
         resources.add("config/gaits.json", resource("/assets/pastfootsteps/config/gaits.json"));

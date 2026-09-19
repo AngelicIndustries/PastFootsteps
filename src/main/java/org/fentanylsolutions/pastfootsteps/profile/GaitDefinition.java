@@ -15,11 +15,17 @@ public final class GaitDefinition {
     private static final Pattern ID = Pattern.compile("[A-Za-z0-9_.:-]{1,128}");
 
     public final String id;
+    public final FastStride fastStride;
     private final Contact[] walkingContacts;
     private final Contact[] runningContacts;
 
     public GaitDefinition(String id, Contact[] walkingContacts, Contact[] runningContacts) {
+        this(id, walkingContacts, runningContacts, null);
+    }
+
+    public GaitDefinition(String id, Contact[] walkingContacts, Contact[] runningContacts, FastStride fastStride) {
         requireId(id, "id");
+        this.fastStride = fastStride;
         this.id = id;
         this.walkingContacts = sortedCopy(walkingContacts);
         this.runningContacts = sortedCopy(runningContacts);
@@ -81,6 +87,28 @@ public final class GaitDefinition {
     private static void requireFinite(double value, double minimum, double maximum, String field) {
         if (Double.isNaN(value) || Double.isInfinite(value) || value < minimum || value > maximum)
             throw new IllegalArgumentException(field + " must be finite and between " + minimum + " and " + maximum);
+    }
+
+    /** Optional ground-stride extension for fast movement, shared by any profile using this gait. */
+    public static final class FastStride {
+
+        public final double startSpeed, fullSpeed, multiplier;
+
+        public FastStride(double startSpeed, double fullSpeed, double multiplier) {
+            requireFinite(startSpeed, 0, 16, "startSpeed");
+            requireFinite(fullSpeed, 0, 16, "fullSpeed");
+            requireFinite(multiplier, 1, 8, "multiplier");
+            if (fullSpeed <= startSpeed)
+                throw new IllegalArgumentException("fullSpeed must be greater than startSpeed");
+            this.startSpeed = startSpeed;
+            this.fullSpeed = fullSpeed;
+            this.multiplier = multiplier;
+        }
+
+        public double scale(double speed) {
+            double progress = Math.max(0, Math.min(1, (speed - startSpeed) / (fullSpeed - startSpeed)));
+            return 1 + (multiplier - 1) * progress * progress * (3 - 2 * progress);
+        }
     }
 
     /** Foot offsets are normalized values which callers multiply by the entity width. */

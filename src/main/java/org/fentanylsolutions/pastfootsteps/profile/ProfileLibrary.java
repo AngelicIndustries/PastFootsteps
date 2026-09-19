@@ -296,14 +296,24 @@ public final class ProfileLibrary implements IResourceManagerReloadListener {
         for (Entry<String, JsonElement> entry : entries.entrySet()) {
             String id = checkedId(entry.getKey(), label + ".gaits");
             JsonObject value = object(entry.getValue(), label + ".gaits." + id);
-            checkKeys(value, label + ".gaits." + id, "enabled", "walk", "run");
+            checkKeys(value, label + ".gaits." + id, "enabled", "walk", "run", "fastStride");
             if (!bool(value, "enabled", true, label)) {
                 removals.add(id);
                 continue;
             }
             Contact[] walk = contacts(value.get("walk"), label + ".gaits." + id + ".walk");
             Contact[] run = value.has("run") ? contacts(value.get("run"), label + ".gaits." + id + ".run") : walk;
-            replacements.put(id, new GaitDefinition(id, walk, run));
+            GaitDefinition.FastStride fastStride = null;
+            if (value.has("fastStride")) {
+                String path = label + ".gaits." + id + ".fastStride";
+                JsonObject tuning = object(value.get("fastStride"), path);
+                checkKeys(tuning, path, "startSpeed", "fullSpeed", "multiplier");
+                fastStride = new GaitDefinition.FastStride(
+                    number(tuning, "startSpeed", Double.NaN, 0, 16, path),
+                    number(tuning, "fullSpeed", Double.NaN, 0, 16, path),
+                    number(tuning, "multiplier", Double.NaN, 1, 8, path));
+            }
+            replacements.put(id, new GaitDefinition(id, walk, run, fastStride));
         }
         for (String id : removals) destination.remove(id);
         destination.putAll(replacements);

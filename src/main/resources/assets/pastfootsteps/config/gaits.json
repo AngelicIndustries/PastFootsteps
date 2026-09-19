@@ -54,6 +54,7 @@
       ]
     },
     "horse": {
+      "fastStride": { "startSpeed": 0.316227766, "fullSpeed": 0.6, "multiplier": 1.5 },
       "walk": [
         { "footId": "hind_left_hoof", "phase": 0.25, "lateral": 0.32, "forward": -0.46 },
         { "footId": "front_left_hoof", "phase": 0.50, "lateral": 0.32, "forward": 0.46 },

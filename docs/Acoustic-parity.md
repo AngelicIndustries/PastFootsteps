@@ -178,3 +178,13 @@ MIT `PFSolver` checks a mapped `.carpet` substrate on a collision shape below 0.
 the overlay; snow/carpet special cases retain their known visual/collision offsets. Shape reads use a guarded
 block-access view and restore the block's shared bounds. Footprint clipping and height change without moving the
 physical contact. This does not provide arbitrary multipart shape inference.
+
+## Horse cadence
+
+Both audited MIT generators triple the horse step threshold above squared horizontal speed 0.1. Their quadruped
+modifier uses randomized walking intervals and a three-event running pattern. PF retains its four physical feet
+and diagonal trot for stable contact positions. The optional gait `fastStride` curve adapts the high-speed correction:
+the bundled horse gradually lengthens strides above sqrt(0.1) blocks/tick, reaching 1.5x at 0.6. The smaller multiplier
+accounts for PF's existing cycle spacing. Smoothed displacement keeps acceleration and deceleration continuous;
+contact phase is not reset. Other bundled quadrupeds retain their accepted timing. Swimming, climbing and impact
+contacts bypass this extension. See [gait profiles](Resource-packs.md) for tuning.

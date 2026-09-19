@@ -52,6 +52,133 @@ public class ContactTrackerTest {
     }
 
     @Test
+    public void fastStrideIsNeutralAtLowSpeed() {
+        GaitDefinition tuned = new GaitDefinition(
+            "tuned",
+            BIPED.contacts(false),
+            BIPED.contacts(true),
+            new GaitDefinition.FastStride(0.3, 0.8, 1.5));
+        Fixture ordinary = new Fixture(BIPED);
+        Fixture fast = new Fixture(tuned);
+        for (int i = 0; i <= 100; i++) {
+            double x = i * 0.1;
+            ordinary.at(x, 0, 0);
+            fast.at(x, 0, 0);
+        }
+        assertTrue(ordinary.events.size() >= 8);
+        assertEquals(ids(ordinary.events), ids(fast.events));
+        for (int i = 0; i < ordinary.events.size(); i++)
+            assertEquals(ordinary.events.get(i).x, fast.events.get(i).x, 0);
+    }
+
+    @Test
+    public void fastGroundStrideReducesBeatsButKeepsEveryRunningDiagonalPair() {
+        GaitDefinition tuned = new GaitDefinition(
+            "tuned",
+            COW.contacts(false),
+            COW.contacts(true),
+            new GaitDefinition.FastStride(0.2, 0.6, 1.5));
+        Fixture ordinary = new Fixture(COW);
+        Fixture fast = new Fixture(tuned);
+        ordinary.runSpeed = fast.runSpeed = 0.2;
+        for (int i = 0; i <= 40; i++) {
+            double x = i * 0.6;
+            ordinary.at(x, 0, 0);
+            fast.at(x, 0, 0);
+        }
+        assertTrue(fast.events.size() >= ordinary.events.size() * 0.6);
+        assertTrue(fast.events.size() <= ordinary.events.size() * 0.75);
+        assertEquals(
+            4,
+            fast.events.stream()
+                .map(c -> c.foot.footId)
+                .distinct()
+                .count());
+        for (int i = 0; i < fast.events.size(); i += 2) {
+            Contact first = fast.events.get(i), second = fast.events.get(i + 1);
+            assertEquals(2, first.groupSize);
+            assertEquals(first.group, second.group);
+            assertNotEquals(first.foot.footId.startsWith("front"), second.foot.footId.startsWith("front"));
+            assertNotEquals(first.foot.footId.endsWith("left"), second.foot.footId.endsWith("left"));
+            assertEquals(first.x, second.x, 0);
+        }
+    }
+
+    @Test
+    public void accelerationAndDecelerationKeepPhaseAndFootGroupsContinuous() {
+        GaitDefinition tuned = new GaitDefinition(
+            "tuned",
+            BIPED.contacts(false),
+            BIPED.contacts(true),
+            new GaitDefinition.FastStride(0.2, 0.8, 1.5));
+        Fixture f = new Fixture(tuned);
+        double x = 0;
+        f.at(x, 0, 0);
+        for (int i = 0; i < 20; i++) {
+            x += 0.05;
+            f.at(x, 0, 0);
+        }
+        for (int i = 0; i < 20; i++) {
+            x += 0.6;
+            f.at(x, 0, 0);
+        }
+        for (int i = 0; i < 20; i++) {
+            x += 0.05;
+            f.at(x, 0, 0);
+        }
+        assertFalse(f.tracker.rebaselined());
+        assertTrue(f.events.size() >= 6);
+        for (int i = 0; i < f.events.size(); i++) {
+            Contact contact = f.events.get(i);
+            assertEquals(i % 2 == 0 ? "left" : "right", contact.foot.footId);
+            assertEquals(i + 1, contact.sequence);
+            if (i > 0) {
+                double spacing = contact.x - f.events.get(i - 1).x;
+                assertTrue("stride shortened or phase reset: " + spacing, spacing >= 1.2 - 1E-8);
+                assertTrue("lost foot contact: " + spacing, spacing <= 1.8 + 1E-8);
+            }
+        }
+    }
+
+    @Test
+    public void fastStrideDoesNotChangeSwimmingOrClimbingCadence() {
+        GaitDefinition tuned = new GaitDefinition(
+            "tuned",
+            BIPED.contacts(false),
+            BIPED.contacts(true),
+            new GaitDefinition.FastStride(0.1, 0.2, 8.0));
+        Fixture ordinaryClimb = new Fixture(BIPED), tunedClimb = new Fixture(tuned);
+        ordinaryClimb.ground = tunedClimb.ground = false;
+        ordinaryClimb.climbing = tunedClimb.climbing = true;
+        for (int i = 0; i <= 24; i++) {
+            ordinaryClimb.at(i * 0.3, i * 0.1, 0);
+            tunedClimb.at(i * 0.3, i * 0.1, 0);
+        }
+        assertTrue(ordinaryClimb.events.size() > 4);
+        assertEquals(ids(ordinaryClimb.events), ids(tunedClimb.events));
+        for (int i = 0; i < ordinaryClimb.events.size(); i++)
+            assertEquals(ordinaryClimb.events.get(i).x, tunedClimb.events.get(i).x, 0);
+        Fixture ordinarySwim = new Fixture(BIPED), tunedSwim = new Fixture(tuned);
+        ordinarySwim.ground = tunedSwim.ground = false;
+        ordinarySwim.swimming = tunedSwim.swimming = true;
+        for (int i = 0; i <= 24; i++) {
+            ordinarySwim.at(i * 0.3, i * 0.1, 0);
+            tunedSwim.at(i * 0.3, i * 0.1, 0);
+        }
+        assertTrue(ordinarySwim.events.size() > 4);
+        assertEquals(ids(ordinarySwim.events), ids(tunedSwim.events));
+        for (int i = 0; i < ordinarySwim.events.size(); i++)
+            assertEquals(ordinarySwim.events.get(i).x, tunedSwim.events.get(i).x, 0);
+        assertEquals(
+            ordinarySwim.events.stream()
+                .map(c -> c.speed)
+                .collect(Collectors.toList()),
+            tunedSwim.events.stream()
+                .map(c -> c.speed)
+                .collect(Collectors.toList()));
+    }
+
+    @Test
     public void remoteCowCanTrotWithoutTheSprintFlagAndPairsDiagonalFeet() {
         Fixture f = new Fixture(COW);
         f.runSpeed = 0.2;

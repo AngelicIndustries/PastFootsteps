@@ -18,6 +18,7 @@ public final class ContactTracker implements ContactGenerator {
 
     private final GaitDefinition.Contact[] walk, run;
     private final Random random;
+    private final GaitDefinition.FastStride fastStride;
     private boolean initialized, grounded, moving, cycleRunning, running, jumped, climbing, swimming;
     private double x, y, z, peakY, phase, airbornePhase, lastDx, lastDz, speed, liquidSpeed;
     private double suspectDx, suspectDy, suspectDz;
@@ -29,6 +30,7 @@ public final class ContactTracker implements ContactGenerator {
     private ContactKind kind = ContactKind.STAND;
 
     public ContactTracker(GaitDefinition gait, long seed) {
+        fastStride = gait.fastStride;
         walk = gait.contacts(false);
         run = gait.contacts(true);
         random = new Random(seed);
@@ -141,6 +143,8 @@ public final class ContactTracker implements ContactGenerator {
                     : inLiquid ? ContactKind.SWIM : running ? ContactKind.RUN : ContactKind.WALK;
                 double interval = Math.max(0.15, onLadder ? ladderStride * 2 : cycleDistance);
                 if (running && !onLadder && !inLiquid) interval *= 1.15;
+                // Smoothly lengthen fast ground strides without resetting contact phase or foot order.
+                if (fastStride != null && !onLadder && !inLiquid) interval *= fastStride.scale(speed);
                 if (supported && grounded && Math.abs(dy) > 0.35 && !onLadder && !inLiquid) {
                     interval *= 0.8;
                     kind = dy > 0 ? running ? ContactKind.UP_RUN : ContactKind.UP

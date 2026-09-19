@@ -130,3 +130,11 @@ Registry mapping diagnostics adapt the audited MIT BlockReport/StateLookup
 report concept to Forge 1.7 metadata and the local effective material resolver.
 The command, provenance fields, missing-definition checks and JSON layout are
 local adapter work. Reports do not evaluate world-dependent appearances.
+
+Fast horse stride extension follows the intent of TerrestrialStepSoundGenerator's
+horse speed correction in both audited MIT revisions. That code tests squared
+horizontal speed above 0.1 and triples its distance threshold. The local adapter
+uses a smooth configurable stride curve above sqrt(0.1), reaching 1.5x at 0.6
+blocks/tick, to fit its existing four-foot diagonal trot rather than copying the
+upstream modifier's three-event timing or its absolute multiplier. Other gaits
+retain their existing timing unless explicitly configured.
