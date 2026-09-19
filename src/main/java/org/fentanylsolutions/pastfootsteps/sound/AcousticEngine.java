@@ -12,6 +12,7 @@ import java.util.List;
 import java.util.Map;
 import java.util.Random;
 import java.util.Set;
+import java.util.function.LongSupplier;
 import java.util.function.Predicate;
 
 import net.minecraft.client.resources.IResource;
@@ -30,7 +31,6 @@ import com.google.gson.JsonParser;
 /** Java 8 adaptation of Presence Footsteps' MIT acoustic model. See packaged SOURCE-NOTICE.txt. */
 public final class AcousticEngine {
 
-    private static final int MAX_PENDING = 512;
     private static final int MAX_LOCAL_ACOUSTICS = 128;
     private static final Acoustic SILENT = (context, event) -> {};
 
@@ -49,19 +49,22 @@ public final class AcousticEngine {
     }
 
     private final Map<String, Acoustic> acoustics = new HashMap<>();
-    private final List<Pending> pending = new ArrayList<>();
+    private final TimedSoundQueue pending;
     private final Random random = new Random();
     private final Player player;
     private final LocalJsonOverrides local = new LocalJsonOverrides();
-    private int pendingAtTickStart = -1;
 
     public AcousticEngine(Player player) {
+        this(player, () -> System.nanoTime() / 1_000_000L);
+    }
+
+    public AcousticEngine(Player player, LongSupplier clock) {
         this.player = player;
+        this.pending = new TimedSoundQueue(clock);
     }
 
     public void clear() {
         pending.clear();
-        pendingAtTickStart = -1;
     }
 
     public boolean has(String name) {
@@ -117,26 +120,13 @@ public final class AcousticEngine {
         acoustics.put(name, acoustic);
     }
 
-    /** Let callers invalidate old owners before playback without aging newly emitted delays. */
+    /** Let callers invalidate old owners before playback without dispatching newly emitted delays. */
     public void beginTick() {
-        pendingAtTickStart = pending.size();
+        pending.beginTick();
     }
 
     public void tick() {
-        List<Pending> due = new ArrayList<>();
-        int count = pendingAtTickStart < 0 ? pending.size() : Math.min(pendingAtTickStart, pending.size());
-        pendingAtTickStart = -1;
-        for (int i = count - 1; i >= 0; i--) {
-            Pending entry = pending.get(i);
-            if (!entry.context.isValid()) {
-                pending.remove(i);
-            } else if (--entry.ticks <= 0) {
-                pending.remove(i);
-                due.add(entry);
-            }
-        }
-        // New delayed entries created during playback start counting on the next tick.
-        for (Pending entry : due) if (entry.context.isValid()) entry.acoustic.play(entry.context, entry.event);
+        pending.tick();
     }
 
     public void play(String name, String event, AcousticContext context) {
@@ -242,11 +232,10 @@ public final class AcousticEngine {
                     : new Range(
                         number(object, "delay_min", 0),
                         number(object, "delay_max", number(object, "delay_min", 0)));
-                return supported((context, event) -> {
-                    int ticks = (int) Math.min(1200, Math.ceil(delay.sample(random) / 50.0));
-                    if (ticks <= 0) child.play(context, event);
-                    else if (pending.size() < MAX_PENDING) pending.add(new Pending(child, ticks, context, event));
-                }, child::supports);
+                boolean keepLate = object.has("skippable");
+                return supported(
+                    (context, event) -> child.play(context.withDelay(delay.min, delay.max, keepLate), event),
+                    child::supports);
             }
             case "empty":
             case "silent":
@@ -307,11 +296,24 @@ public final class AcousticEngine {
     private Acoustic basic(String name, Range volume, Range pitch) {
         return (context, event) -> {
             if (name.isEmpty()) return; // Intentional silence, not an absent event.
-            player.play(
-                name,
-                volume.sample(random, context.volumePosition) * context.volume,
-                pitch.sample(random, context.pitchPosition) * context.pitch,
-                context);
+            float sampledVolume = volume.sample(random, context.volumePosition) * context.volume;
+            float sampledPitch = pitch.sample(random, context.pitchPosition) * context.pitch;
+            Runnable playback = () -> player.play(name, sampledVolume, sampledPitch, context);
+            if (Float.isNaN(context.delayMin)) {
+                playback.run();
+                return;
+            }
+            Range delay = new Range(context.delayMin, context.delayMax);
+            long milliseconds = (long) Math.min(60_000, Math.ceil(delay.sample(random)));
+            if (milliseconds <= 0) {
+                playback.run();
+                return;
+            }
+            long maximum = (long) Math.min(60_000, Math.max(delay.min, delay.max));
+            // MIT tolerance, with at least one client tick of late grace for our 20 Hz dispatcher.
+            long early = context.keepLate ? 0 : (long) Math.pow(maximum, 0.75);
+            long late = context.keepLate ? -1 : Math.max(50, (long) (maximum / 1.5));
+            pending.schedule(milliseconds, early, late, context::isValid, playback);
         };
     }
 
@@ -414,18 +416,4 @@ public final class AcousticEngine {
         }
     }
 
-    private static final class Pending {
-
-        final Acoustic acoustic;
-        int ticks;
-        final AcousticContext context;
-        final String event;
-
-        Pending(Acoustic acoustic, int ticks, AcousticContext context, String event) {
-            this.acoustic = acoustic;
-            this.ticks = ticks;
-            this.context = context;
-            this.event = event;
-        }
-    }
 }

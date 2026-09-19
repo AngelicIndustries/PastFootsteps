@@ -149,7 +149,7 @@ in the biome map and mod config.
 Supported nodes are `basic`, `events`, `simultaneous` (or an array), `probability` (weighted `entries`), `chance`,
 `delayed`, and `empty` (also `silent`). `null` is also an explicit empty child node. These keep a resolved channel
 owned and intentionally silent; omitting an acoustic definition is different and allows normal fallback behavior.
-Delay values are milliseconds, rounded up to game ticks. Ranges use `{"min": 90, "max": 110}`.
+Delay values are milliseconds; see the timing rules below. Ranges use `{"min": 90, "max": 110}`.
 They normally sample randomly. A Java caller can use `AcousticContext.withRangePosition(volume, pitch)` to select
 fractions independently: `0` chooses `min`, `1` chooses `max`, and `Float.NaN` retains random variation for that axis.
 Finite values outside 0..1 extrapolate, including descending ranges; for example, position `2` on volume 20..80
@@ -177,6 +177,19 @@ is desired. Existing native 1.7 sound names retain their normal routing.
 `variator.json` remains an empty compatibility placeholder. In the cached MIT PF source it configured its old motion
 generator; this port uses the Forge movement controls and its contact tracker instead. It is not read, so values placed
 there do not silently create a second stride, run, or idle policy.
+
+Delayed acoustics accept `delay` in milliseconds, either a number or `{ "min": 30, "max": 60 }`,
+and the legacy `delay_min`/`delay_max` pair. They can wrap an `acoustic` child or use the short `name`
+form. Inner delayed nodes override outer delay bounds. Simultaneous siblings keep their own options;
+samples and variation are selected once before queueing. Delays are capped at 60 seconds.
+
+Timing uses a monotonic clock, dispatched on client ticks, with MIT's `max^0.75` millisecond early
+window and `max / 1.5` late tolerance. PF allows at least 50 ms of late grace for its tick dispatcher.
+Stale layers are discarded after a stall. Java integrations can use
+`AcousticContext.withLateSoundSkipping(false)` to retain late acoustic layers. As a PF JSON extension,
+a delayed node's `skippable` key exposes that same legacy presence-only option: either `true` or
+`false` keeps late layers. Omit it for normal expiry. It does not bypass actor validity, queue limits,
+pause/reload cancellation, or the separate distance-arrival expiry.
 
 ## Entity and gait profiles
 

@@ -22,6 +22,12 @@ public final class LandingSoundGate {
             || path.equals("game.hostile.hurt.fall.big");
     }
 
+    /** Cancels deferred native impacts during pause, reload or world teardown. */
+    public void clear() {
+        pending.clear();
+        generation = ownedTick = nativeTick = Long.MIN_VALUE;
+    }
+
     public void nativeFall(long tick) {
         nativeTick = tick;
     }

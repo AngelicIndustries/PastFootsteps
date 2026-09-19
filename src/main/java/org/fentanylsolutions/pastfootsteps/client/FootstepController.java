@@ -46,6 +46,7 @@ import org.fentanylsolutions.pastfootsteps.sound.ActorSound;
 import org.fentanylsolutions.pastfootsteps.sound.FoliageSounds;
 import org.fentanylsolutions.pastfootsteps.sound.ImpactSounds;
 import org.fentanylsolutions.pastfootsteps.sound.LandingSoundGate;
+import org.fentanylsolutions.pastfootsteps.sound.SoundArrival;
 import org.fentanylsolutions.pastfootsteps.sound.SoundEngine;
 import org.fentanylsolutions.pastfootsteps.sound.SoundNames;
 import org.fentanylsolutions.pastfootsteps.sound.SourceSoundScale;
@@ -65,6 +66,7 @@ public final class FootstepController implements IResourceManagerReloadListener 
     private final MaterialLibrary materials = new MaterialLibrary();
     private final SurfaceResolver resolver = new SurfaceResolver(materials);
     private final ProfileLibrary profiles = new ProfileLibrary();
+    private final SoundArrival arrivals = new SoundArrival();
     private final SoundEngine sound = new SoundEngine(this::emit);
     private final Map<EntityLivingBase, ActorState> actors = new LinkedHashMap<>();
     private final ContactDebugRenderer contactDebug = new ContactDebugRenderer();
@@ -217,11 +219,12 @@ public final class FootstepController implements IResourceManagerReloadListener 
 
     public void reset() {
         for (ActorState state : actors.values()) {
-            state.fallSounds.tick(state.actor.worldObj.getTotalWorldTime(), state.generation, false);
+            state.fallSounds.clear();
             state.active = false;
         }
         actors.clear();
         sound.clear();
+        arrivals.clear();
         footprints.reset();
         equipment.reset();
         RemoteMotion.reset();
@@ -323,9 +326,16 @@ public final class FootstepController implements IResourceManagerReloadListener 
             if (!actors.isEmpty()) reset();
             return;
         }
-        if (mc.isGamePaused()) return;
+        if (mc.isGamePaused()) {
+            // Sounds from before a singleplayer pause should not resume after the menu closes.
+            sound.clear();
+            arrivals.clear();
+            for (ActorState state : actors.values()) state.fallSounds.clear();
+            return;
+        }
         voicesThisTick = 0;
         sound.beginTick();
+        arrivals.beginTick();
         contactDebug.tick();
         footprints.tick(world);
         if (discoveryTicks-- <= 0) {
@@ -357,6 +367,7 @@ public final class FootstepController implements IResourceManagerReloadListener 
         }
         // Validate delayed owners after this tick's removals, teleports and dimension changes.
         sound.tick();
+        arrivals.tick();
     }
 
     private boolean eligible(EntityLivingBase actor) {
@@ -735,6 +746,23 @@ public final class FootstepController implements IResourceManagerReloadListener 
     }
 
     private void emit(String name, float volume, float pitch, AcousticContext context) {
+        if (!Config.enabled || name == null || volume <= 0 || context.volume <= 0 || !context.isValid()) return;
+        Minecraft mc = Minecraft.getMinecraft();
+        EntityLivingBase listener = mc.renderViewEntity;
+        if (Config.distanceDelay && listener != null) {
+            double dx = context.x - listener.posX;
+            double dy = context.y - (listener.posY - listener.yOffset + listener.getEyeHeight());
+            double dz = context.z - listener.posZ;
+            arrivals.play(
+                dx * dx + dy * dy + dz * dz,
+                () -> Config.distanceDelay && Config.enabled && context.isValid(),
+                () -> emitNow(name, volume, pitch, context));
+        } else {
+            emitNow(name, volume, pitch, context);
+        }
+    }
+
+    private void emitNow(String name, float volume, float pitch, AcousticContext context) {
         if (!Config.enabled || Minecraft.getMinecraft().theWorld == null
             || volume <= 0
             || context.volume <= 0

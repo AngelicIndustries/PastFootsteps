@@ -62,6 +62,22 @@ public class LandingSoundGateTest {
     }
 
     @Test
+    public void pauseOrResetCancelsDeferredNativeAudioAndOwnershipMarkers() {
+        LandingSoundGate gate = new LandingSoundGate();
+        AtomicInteger nativePlays = new AtomicInteger();
+        gate.replaced(10, 0, 8, 0, 0);
+        gate.nativeFall(10);
+        gate.defer(10, 0, 0, 0, 0, nativePlays::incrementAndGet);
+        gate.clear();
+        gate.tick(20, 0, true);
+        assertEquals(0, nativePlays.get());
+        assertFalse(gate.nativeImpactTick(10));
+        gate.defer(11, 0, 8, 0, 0, nativePlays::incrementAndGet);
+        gate.tick(15, 0, true);
+        assertEquals(1, nativePlays.get());
+    }
+
+    @Test
     public void queueIsBoundedAndNativeImpactMarkerExpiresNextTick() {
         LandingSoundGate gate = new LandingSoundGate();
         AtomicInteger nativePlays = new AtomicInteger();

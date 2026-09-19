@@ -59,6 +59,7 @@ public class ActorSoundTest {
     public void categoryAndRangeControlsSurviveEquipmentScalingAndDelayedPlayback() {
         AtomicBoolean alive = new AtomicBoolean(true);
         final int[] plays = { 0 };
+        final long[] now = { 0 };
         AcousticEngine engine = new AcousticEngine((name, volume, pitch, context) -> {
             plays[0]++;
             assertEquals(SoundCategory.MOBS, context.category);
@@ -67,7 +68,7 @@ public class ActorSoundTest {
             assertEquals(1.25F, pitch, 0.0001F);
             assertEquals(0.25F, context.volumePosition, 0);
             assertTrue(context.isValid());
-        });
+        }, () -> now[0]);
         engine.load(
             "test",
             new JsonParser().parse("{\"type\":\"delayed\",\"delay\":50,\"acoustic\":\"equipment.rain\"}"));
@@ -75,10 +76,12 @@ public class ActorSoundTest {
             .withRangePosition(0.25F, Float.NaN)
             .scale(0.5F, 1.25F);
         engine.play("test", "walk", context);
+        now[0] += 50;
         engine.tick();
         assertEquals(1, plays[0]);
         engine.play("test", "walk", context);
         alive.set(false);
+        now[0] += 50;
         engine.tick();
         assertEquals(1, plays[0]);
     }

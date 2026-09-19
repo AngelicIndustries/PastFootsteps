@@ -28,6 +28,7 @@ pastfootsteps.config.effects.swimming=Swimming sounds
 pastfootsteps.config.effects.jumpAndLand=Jump and land
 pastfootsteps.config.effects.shuffle=Shuffle
 pastfootsteps.config.effects.stationary=Stationary
+pastfootsteps.config.effects.distanceDelay=Distance-based sound delay
 pastfootsteps.config.effects.sizePitch=Size-sensitive pitch
 pastfootsteps.config.movement=Movement
 pastfootsteps.config.movement.stride=Stride

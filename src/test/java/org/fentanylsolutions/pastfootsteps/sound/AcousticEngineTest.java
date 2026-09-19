@@ -34,6 +34,7 @@ public class AcousticEngineTest {
     private final List<String> names = new ArrayList<>();
     private final List<Float> volumes = new ArrayList<>();
     private final List<Float> pitches = new ArrayList<>();
+    private long now;
     private final AcousticEngine engine = new AcousticEngine((name, volume, pitch, context) -> {
         names.add(name);
         volumes.add(volume);
@@ -42,11 +43,16 @@ public class AcousticEngineTest {
         assertTrue(Float.isFinite(pitch));
         assertTrue(volume >= 0);
         assertTrue(pitch >= 0);
-    });
+    }, () -> now);
     private final AcousticContext context = new AcousticContext(0, 0, 0, 1, 1);
 
     @Rule
     public final TemporaryFolder temporary = new TemporaryFolder();
+
+    private void tick() {
+        now += 50;
+        engine.tick();
+    }
 
     private void load(String json) {
         engine.load("test", new JsonParser().parse(json));
@@ -70,7 +76,7 @@ public class AcousticEngineTest {
                 for (String event : new String[] { "walk", "run", "land", "jump", "wander", "stand", "up", "down_run",
                     "swim" }) {
                     engine.play(name, event, context);
-                    for (int i = 0; i < 100; i++) engine.tick();
+                    for (int i = 0; i < 100; i++) tick();
                 }
             }
         }
@@ -170,7 +176,7 @@ public class AcousticEngineTest {
         load(
             "{\"type\":\"delayed\",\"delay\":50,\"acoustic\":{\"type\":\"basic\",\"name\":\"delayed\",\"volume\":{\"min\":20,\"max\":80},\"pitch\":{\"min\":120,\"max\":80}}}");
         engine.play("test", "walk", positioned.withRangePosition(2.0F, -1.0F));
-        engine.tick();
+        tick();
         assertEquals(2, volumes.size());
         assertEquals(0.35F, volumes.get(1), 0.00001F);
         assertEquals(1.6F, pitches.get(1), 0.00001F);
@@ -209,18 +215,83 @@ public class AcousticEngineTest {
     public void delayedSoundsKeepTheirContextAndClearOnlyPending() {
         load("{\"type\":\"delayed\",\"delay\":{\"min\":100,\"max\":100},\"acoustic\":\"delayed\"}");
         engine.play("test", "walk", new AcousticContext(0, 0, 0, 0.25f, 0.75f));
-        engine.tick();
+        tick();
         assertTrue(names.isEmpty());
-        engine.tick();
+        tick();
         assertEquals(1, names.size());
         assertEquals(0.25f, volumes.get(0), 0.00001f);
         assertEquals(0.75f, pitches.get(0), 0.00001f);
         engine.play("test", "walk", context);
         engine.clear();
-        engine.tick();
-        engine.tick();
+        tick();
+        tick();
         assertEquals(1, names.size());
         assertTrue(engine.has("test"));
+    }
+
+    @Test
+    public void nestedDelayOverridesOuterAndSchedulesSamplesOnce() {
+        load(
+            "{\"type\":\"delayed\",\"delay\":1000,\"acoustic\":[{\"type\":\"delayed\",\"delay\":50,\"acoustic\":\"inner\"},\"outer\"]}");
+        engine.play("test", "walk", context);
+        tick();
+        assertEquals(Arrays.asList("inner"), names);
+        now = 1000;
+        engine.tick();
+        assertEquals(Arrays.asList("inner", "outer"), names);
+        now = 1050;
+        engine.tick();
+        assertEquals(2, names.size());
+    }
+
+    @Test
+    public void nestedZeroDelayOverridesOuterAndSiblingOrderIsStable() {
+        load(
+            "{\"type\":\"delayed\",\"delay\":100,\"acoustic\":[{\"type\":\"delayed\",\"delay\":0,\"acoustic\":\"immediate\"},\"first\",\"second\"]}");
+        engine.play("test", "walk", context);
+        assertEquals(Arrays.asList("immediate"), names);
+        now = 100;
+        engine.tick();
+        assertEquals(Arrays.asList("immediate", "first", "second"), names);
+    }
+
+    @Test
+    public void stalledDelayedLayersExpireWithoutRecreatingNestedWork() {
+        load(
+            "{\"type\":\"delayed\",\"delay_min\":50,\"delay_max\":50,\"acoustic\":{\"type\":\"delayed\",\"delay\":50,\"acoustic\":\"stale\"}}");
+        engine.play("test", "walk", context);
+        now = 1000;
+        engine.tick();
+        tick();
+        assertTrue(names.isEmpty());
+        engine.play("test", "walk", context);
+        tick();
+        assertEquals(Arrays.asList("stale"), names);
+    }
+
+    @Test
+    public void callerCanRetainLateLayersThroughContextChanges() {
+        load("{\"type\":\"delayed\",\"delay\":50,\"acoustic\":\"kept\"}");
+        AcousticContext keep = context.withLateSoundSkipping(false)
+            .scale(0.5f, 1)
+            .withRangePosition(0.25f, 0.5f)
+            .withCategory(net.minecraft.client.audio.SoundCategory.MOBS);
+        engine.play("test", "walk", keep);
+        engine.play("test", "walk", keep.withLateSoundSkipping(true));
+        now = 1000;
+        engine.tick();
+        assertEquals(Arrays.asList("kept"), names);
+        assertEquals(0.5f, volumes.get(0), 0);
+    }
+
+    @Test
+    public void legacySkippablePresenceKeepsLateLayersRegardlessOfValue() {
+        load(
+            "{\"type\":\"delayed\",\"delay\":200,\"skippable\":false,\"acoustic\":{\"type\":\"delayed\",\"delay\":50,\"name\":\"kept\"}}");
+        engine.play("test", "walk", context);
+        now = 1000;
+        engine.tick();
+        assertEquals(Arrays.asList("kept"), names);
     }
 
     @Test
@@ -239,10 +310,10 @@ public class AcousticEngineTest {
         load("{\"type\":\"delayed\",\"delay\":50,\"acoustic\":\"nextTick\"}");
         engine.beginTick();
         engine.play("test", "walk", context);
-        engine.tick();
+        tick();
         assertTrue(names.isEmpty());
         engine.beginTick();
-        engine.tick();
+        tick();
         assertEquals(java.util.Arrays.asList("nextTick"), names);
     }
 
@@ -254,12 +325,12 @@ public class AcousticEngineTest {
         engine.play("test", "walk", owned);
         engine.beginTick();
         alive.set(false);
-        engine.tick();
+        tick();
         engine.play("test", "walk", owned);
-        engine.tick();
+        tick();
         assertTrue(names.isEmpty());
         alive.set(true);
-        engine.tick();
+        tick();
         assertTrue(names.isEmpty());
     }
 

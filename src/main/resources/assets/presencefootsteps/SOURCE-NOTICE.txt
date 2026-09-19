@@ -70,6 +70,14 @@ MIT branches, including finite extrapolation (used by winged landing volume).
 The Forge adapter bounds invalid audio results; swimming clamps its own
 intensity independently. No built-in MIT generator requests gliding_pitch.
 
+Acoustic delay merging, early/late tolerances and distance arrival follow
+DelayedAcoustic, Options, DelayedSoundPlayer and ImmediateSoundPlayer at the
+same MIT revision. The Forge adapter uses bounded monotonic queues, client
+listener coordinates, one tick of minimum late grace, and actor lifetime
+checks. It fixes the upstream ranged-delay random-bound bug. The skippable
+presence option is also exposed as an adapter JSON field; vanilla paused
+menus clear pending audio. Distance arrival has a separate stale deadline.
+
 The 455 OGG files imported from that namespace are byte-identical MIT-source
 assets and are all mono. Its imported sound event categories were changed
 from "master" to the existing 1.7.10 "player" category. Local aliases cover

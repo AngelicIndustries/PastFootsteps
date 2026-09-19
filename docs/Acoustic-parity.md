@@ -107,3 +107,17 @@ Local files are limited to 1 MiB; at most 128 acoustic files are considered in l
 strict (no duplicate keys or trailing data) and each file is decoded as one atomic layer. During an in-place malformed
 edit, the previous valid version of that same file remains active. Removing the file removes its local layer on the next
 reload, exposing the resource-pack definition or no definition.
+
+## Sound timing
+
+Acoustic delays now merge into the final sample, matching MIT's inner-option precedence rather than
+adding nested delays together. A bounded monotonic queue applies early tolerance and drops stale
+layers, with one tick of minimum late grace for 1.7's dispatcher. Delay ranges use their stated
+endpoints; the pinned upstream nonzero-minimum random-range bug is not reproduced. Caller-controlled
+late retention and the PF JSON `skippable` extension preserve the legacy presence-only semantics.
+
+Distance arrival follows MIT ImmediateSoundPlayer: strictly over 10 blocks, delay by
+`floor(distance / 2)` ticks. The configurable adapter uses the 1.7 sound listener's eye position and
+its own bounded queue instead of Minecraft's unmanaged delayed queue. Sounds retain snapshot source
+positions and actor validity. Arrival queues also expire stale work; nested scheduling cannot apply
+the distance delay twice. Pausing singleplayer, changing worlds and reloading clears pending work.

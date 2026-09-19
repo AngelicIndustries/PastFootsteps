@@ -64,11 +64,12 @@ public class SoundNamesTest {
     @Test
     public void equipmentScalingAndDelayedPlaybackRetainSourceAndLifetime() {
         List<String> sounds = new ArrayList<>();
+        final long[] now = { 0 };
         AcousticEngine engine = new AcousticEngine((name, volume, pitch, context) -> {
             sounds.add(resolve(name, context.localPlayer));
             assertEquals(0.5F, volume, 0.0001F);
             assertEquals(1.25F, pitch, 0.0001F);
-        });
+        }, () -> now[0]);
         engine.load(
             "delayed",
             new JsonParser().parse(
@@ -77,10 +78,12 @@ public class SoundNamesTest {
         AcousticContext context = new AcousticContext(1, 2, 3, 1, 1, false, alive::get).scale(0.5F, 1.25F);
         engine.play("delayed", "walk", context);
         assertTrue(sounds.isEmpty());
+        now[0] += 50;
         engine.tick();
         assertEquals(java.util.Collections.singletonList("presencefootstepsmono:" + STONE), sounds);
         engine.play("delayed", "walk", context);
         alive.set(false);
+        now[0] += 50;
         engine.tick();
         assertEquals(1, sounds.size());
     }

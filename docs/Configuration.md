@@ -6,7 +6,7 @@ Open **Mods > PastFootsteps > Config**. Ordinary toggles, volumes and budgets us
 | --- | --- |
 | General | Master enable; other players and profiled mobs; actor discovery range (24 blocks), tracked actor cap (64), sound sample cap (32 per tick); diagnostic HUD/markers. |
 | Volume | Master (1), own player (1), other players (0.7), passive mobs (0.7), hostile mobs (0.7), foliage (1), shallow-water layer (1) and swimming (1), each from 0 to 2. Running adjustment defaults to 0, range -1 to 1. |
-| Effects | Material sound replacement, foliage, shallow-water audio, swimming, jump/landing, stopping/reversal shuffles, material-defined stationary creaks and size-sensitive pitch. All default on. |
+| Effects | Material sound replacement, foliage, shallow-water audio, swimming, jump/landing, stopping/reversal shuffles, material-defined stationary creaks size-sensitive pitch and distance-based sound delay. All default on. |
 | Movement | Base distance between player footsteps (1.2 blocks) and ladder spacing (0.65 blocks). Entity/gait profiles determine other creatures' cycles. |
 | Footwear and armor movement | Independent boots/body toggles and volumes, mixed-armor mode and item/entity categories. See [Equipment](Equipment.md). |
 | Rain footsteps | Exposed-rain accents, volume and entity allow/exclusion list. See [Equipment](Equipment.md). |
@@ -31,5 +31,9 @@ PF movement samples obey Minecraft's Players, Friendly Creatures or Hostile Crea
 `volume.ownPlayer` affects your own movement sounds without changing other actors. `volume.runningBoost` smoothly adjusts volume with movement speed, including vertical movement: `0` preserves constant volume. Positive values reserve headroom by softening walking while running retains the configured volume: `0.5` gives running up to 50% more gain than walking, and `1` doubles it. This preserves the contrast for samples that already reach Minecraft's volume ceiling. Negative values soften running instead: `-0.5` reduces its gain by up to 50%. It defaults to `0`, matching MIT PF. All PF movement layers share this adjustment.
 
 `effects.sizePitch` defaults on. It compares actual width with the entity profile's adult `referenceWidth`: babies sound higher, enlarged actors lower. Adult vanilla mobs keep their normal pitch. Profiles without a reference width stay neutral; disable the toggle to keep normal pitch at every size. This does not change gait timing or footprint size.
+
+`effects.distanceDelay` defaults on. Movement sounds farther than 10 blocks from the listening entity arrive after `floor(distance / 2)` ticks: about 0.3 seconds at 12 blocks or 0.6 seconds at 24 blocks. Disable it for immediate arrival at every distance; material-defined delayed layers still apply. The 1.7 adapter uses the listening entity's eye position, including a spectated entity, rather than an offset third-person camera. Near sounds, including your own footsteps, remain immediate apart from authored layers.
+
+Delayed layers and distance arrivals use bounded queues and discard stale sounds after stalls. Actor removal, teleport, world changes and resource reloads cancel pending sounds. Singleplayer pause clears pending audio so it does not resume after the menu closes. The normal per-tick sound budget also applies when delayed sounds start.
 
 JSON overrides are documented in [Resource packs](Resource-packs.md), [Footprints](Footprints.md), [Equipment](Equipment.md) and [Support surfaces](Support-surfaces.md). Files are not copied from AET automatically. Use `/pf status` for the focused actor, `/pf reload` after JSON edits, and `/pf report` to save `config/pastfootsteps/diagnostics/latest-report.json` for debugging.

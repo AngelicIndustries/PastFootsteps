@@ -19,7 +19,7 @@ public final class Config {
     public static float passiveVolume = 0.7f, hostileVolume = 0.7f;
     public static float swimmingVolume = 1;
     public static float ownVolume = 1, runningBoost = 0;
-    public static boolean sizePitch = true;
+    public static boolean sizePitch = true, distanceDelay = true;
     public static float stride = 1.2f, ladderStride = 0.65f;
     public static int range = 24, maxEntities = 64, maxSoundsPerTick = 32;
 
@@ -120,6 +120,11 @@ public final class Config {
             "stationary",
             true,
             "Allow materials such as creaky wood to make occasional standing sounds.");
+        distanceDelay = bool(
+            "effects",
+            "distanceDelay",
+            true,
+            "Delay movement sounds beyond 10 blocks by distance, matching MIT Presence Footsteps. Nearby sounds stay immediate.");
         sizePitch = bool(
             "effects",
             "sizePitch",
