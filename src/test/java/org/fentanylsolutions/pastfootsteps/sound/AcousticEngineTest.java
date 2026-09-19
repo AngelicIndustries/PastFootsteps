@@ -158,22 +158,51 @@ public class AcousticEngineTest {
     }
 
     @Test
-    public void rangePositionsInterpolateClampAndSurviveScalingAndDelay() {
+    public void rangePositionsInterpolateExtrapolateAndSurviveScalingAndDelay() {
         load(
             "{\"type\":\"basic\",\"name\":\"range\",\"volume\":{\"min\":20,\"max\":80},\"pitch\":{\"min\":120,\"max\":80}}");
         AcousticContext positioned = new AcousticContext(0, 0, 0, 0.5F, 2.0F).withRangePosition(0.25F, 2.0F)
             .scale(0.5F, 0.5F);
         engine.play("test", "walk", positioned);
         assertEquals(0.0875F, volumes.get(0), 0.00001F);
-        assertEquals(0.8F, pitches.get(0), 0.00001F);
+        assertEquals(0.4F, pitches.get(0), 0.00001F);
 
         load(
             "{\"type\":\"delayed\",\"delay\":50,\"acoustic\":{\"type\":\"basic\",\"name\":\"delayed\",\"volume\":{\"min\":20,\"max\":80},\"pitch\":{\"min\":120,\"max\":80}}}");
-        engine.play("test", "walk", positioned.withRangePosition(-1.0F, -1.0F));
+        engine.play("test", "walk", positioned.withRangePosition(2.0F, -1.0F));
         engine.tick();
         assertEquals(2, volumes.size());
-        assertEquals(0.05F, volumes.get(1), 0.00001F);
-        assertEquals(1.2F, pitches.get(1), 0.00001F);
+        assertEquals(0.35F, volumes.get(1), 0.00001F);
+        assertEquals(1.6F, pitches.get(1), 0.00001F);
+    }
+
+    @Test
+    public void explicitVolumePositionRetainsRandomPitchAndRejectsInfinitePositions() {
+        load("{\"name\":\"range\",\"volume\":{\"min\":20,\"max\":80},\"pitch\":{\"min\":90,\"max\":110}}");
+        AcousticContext ranged = context.withRangePosition(2, Float.NaN);
+        for (int i = 0; i < 20; i++) engine.play("test", "walk", ranged);
+        for (float volume : volumes) assertEquals(1.4F * context.volume, volume, 0.00001F);
+        assertTrue(new java.util.HashSet<>(pitches).size() > 1);
+        for (float[] positions : new float[][] { { Float.POSITIVE_INFINITY, 0 }, { 0, Float.NEGATIVE_INFINITY } }) {
+            try {
+                context.withRangePosition(positions[0], positions[1]);
+                fail("Infinite range positions must be rejected");
+            } catch (IllegalArgumentException expected) {}
+        }
+    }
+
+    @Test
+    public void extrapolationCannotProduceNegativeOrInfiniteRangeParameters() {
+        load("{\"name\":\"range\",\"volume\":{\"min\":20,\"max\":80},\"pitch\":{\"min\":120,\"max\":80}}");
+        engine.play("test", "walk", new AcousticContext(0, 0, 0, 1, 1).withRangePosition(-1, 4));
+        assertEquals(0F, volumes.get(0), 0);
+        assertEquals(0F, pitches.get(0), 0);
+        engine.play(
+            "test",
+            "walk",
+            new AcousticContext(0, 0, 0, 1, 1).withRangePosition(Float.MAX_VALUE, -Float.MAX_VALUE));
+        assertTrue(Float.isFinite(volumes.get(1)));
+        assertTrue(Float.isFinite(pitches.get(1)));
     }
 
     @Test

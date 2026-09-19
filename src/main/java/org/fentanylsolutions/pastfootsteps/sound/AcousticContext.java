@@ -11,7 +11,7 @@ public final class AcousticContext {
     public final float volume, pitch;
     public final boolean localPlayer;
     public final SoundCategory category;
-    /** NaN keeps random variation; otherwise this selects a position along the acoustic's range. */
+    /** NaN keeps random variation; finite values select or extrapolate along the acoustic's range. */
     public final float volumePosition, pitchPosition;
     private final BooleanSupplier validity;
 
@@ -56,7 +56,13 @@ public final class AcousticContext {
             category);
     }
 
+    /**
+     * Selects range fractions: 0 is min, 1 is max, and finite values outside that interval extrapolate.
+     * NaN preserves random sampling independently for either axis, as when no MIT gliding option is supplied.
+     */
     public AcousticContext withRangePosition(float volumePosition, float pitchPosition) {
+        if (Float.isInfinite(volumePosition) || Float.isInfinite(pitchPosition))
+            throw new IllegalArgumentException("Range positions must be finite or NaN for random sampling");
         return new AcousticContext(
             x,
             y,

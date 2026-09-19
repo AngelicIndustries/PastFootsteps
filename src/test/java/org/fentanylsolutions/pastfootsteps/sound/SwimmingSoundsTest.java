@@ -54,6 +54,12 @@ public class SwimmingSoundsTest {
         assertEquals(0.8F * (0.1F + 0.9F * 0.7F), values[0], 0.00001F);
         assertTrue(values[1] >= 0.9F && values[1] <= 1.1F);
 
+        // Generic acoustic positions may extrapolate, but swim intensity stays bounded at its source.
+        SwimmingSounds.play(sound, SwimmingSounds.Mode.WATER, 100, local);
+        assertEquals(0.8F, values[0], 0.00001F);
+        SwimmingSounds.play(sound, SwimmingSounds.Mode.WATER, -1, local);
+        assertEquals(0.08F, values[0], 0.00001F);
+
         AtomicBoolean alive = new AtomicBoolean(true);
         AcousticContext remote = new AcousticContext(4, 5, 6, 0.8F, 1.0F, false, alive::get);
         SwimmingSounds.play(sound, SwimmingSounds.Mode.LAVA, 1.0, remote);

@@ -395,8 +395,11 @@ public final class AcousticEngine {
         }
 
         float sample(Random random, float position) {
-            float fraction = Float.isNaN(position) ? random.nextFloat() : Math.max(0, Math.min(1, position));
-            return min + (max - min) * fraction;
+            double fraction = Float.isNaN(position) ? random.nextFloat() : position;
+            // MIT Range.on extrapolates (winged landings deliberately use 2). The caller owns any
+            // movement-specific clamp. Keep the resulting audio parameter finite and non-negative.
+            double result = min + ((double) max - min) * fraction;
+            return (float) Math.max(0, Math.min(Float.MAX_VALUE, result));
         }
     }
 

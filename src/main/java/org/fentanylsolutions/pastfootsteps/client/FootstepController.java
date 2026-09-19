@@ -43,6 +43,7 @@ import org.fentanylsolutions.pastfootsteps.profile.EntityProfile;
 import org.fentanylsolutions.pastfootsteps.profile.ProfileLibrary;
 import org.fentanylsolutions.pastfootsteps.sound.AcousticContext;
 import org.fentanylsolutions.pastfootsteps.sound.ActorSound;
+import org.fentanylsolutions.pastfootsteps.sound.FoliageSounds;
 import org.fentanylsolutions.pastfootsteps.sound.ImpactSounds;
 import org.fentanylsolutions.pastfootsteps.sound.LandingSoundGate;
 import org.fentanylsolutions.pastfootsteps.sound.SoundEngine;
@@ -452,9 +453,11 @@ public final class FootstepController implements IResourceManagerReloadListener 
             .getBiomeGenForCoords((int) Math.floor(actor.posX), (int) Math.floor(actor.posZ));
         state.pitch += (materials.biomePitch(biome) - state.pitch) * 0.05f;
         state.volume += (materials.biomeVolume(biome) - state.volume) * 0.05f;
-        state.foliage = Config.surfaceSounds && Config.foliage ? resolver.foliage(actor, state.profile.materialMap)
+        state.wearingBoots = actor.getEquipmentInSlot(1) != null;
+        state.sprinting = motion == null ? actor.isSprinting() : motion.sprinting;
+        state.messyFoliage = Config.surfaceSounds && Config.foliage
+            ? resolver.messyFoliage(actor, state.profile.materialMap)
             : null;
-        state.stepped = false;
         double size = state.child ? state.profile.childScale : 1;
         double feetY = motion == null && actor != Minecraft.getMinecraft().thePlayer && grounded && current != null
             ? current.contactY
@@ -471,6 +474,7 @@ public final class FootstepController implements IResourceManagerReloadListener 
         double contactY = support == null ? feetY : feetY - support.posY;
         double contactZ = support == null ? motionZ : motionZ - support.posZ;
         state.soundScale.update(contactX, contactY, contactZ, state.generation, state.profile.runSpeed);
+        state.foliageSounds.begin(actor.worldObj.getTotalWorldTime(), state.generation, state.messyFoliage);
         int[] acceptedContacts = { 0 };
         try {
             state.tracker.update(
@@ -481,7 +485,7 @@ public final class FootstepController implements IResourceManagerReloadListener 
                 motion == null ? actor.isOnLadder() : motion.climbing,
                 swimming,
                 false, // Physical contacts still exist when sneaking; audio consumers filter them below.
-                motion == null ? actor.isSprinting() : motion.sprinting,
+                state.sprinting,
                 Config.stride * 2 * state.profile.strideMultiplier * size,
                 Config.ladderStride * size,
                 state.profile.runSpeed,
@@ -504,25 +508,20 @@ public final class FootstepController implements IResourceManagerReloadListener 
             equipment.forget(actor);
             state.generation++;
             state.soundScale.update(contactX, contactY, contactZ, state.generation, state.profile.runSpeed);
+            state.foliageSounds.begin(actor.worldObj.getTotalWorldTime(), state.generation, state.messyFoliage);
             state.lastContact = null;
         }
-        double dx = actor.posX - state.lastX, dz = actor.posZ - state.lastZ;
-        if (state.initialized && !state.tracker.rebaselined()
-            && dx * dx + dz * dz > 0.00001
-            && !actor.isSneaking()
-            && state.foliage != null
-            && !state.foliage.equals(state.lastFoliage)
-            && !state.stepped) {
-            playMaterial(
-                state,
-                state.foliage,
-                "walk",
-                Config.foliageVolume,
-                actor.posX,
-                actor.boundingBox.minY,
-                actor.posZ);
-        }
-        state.lastFoliage = state.foliage;
+        double dx = contactX - state.lastFoliageX, dz = contactZ - state.lastFoliageZ;
+        String entry = state.foliageSounds.entry(
+            state.initialized && !state.tracker.rebaselined()
+                && Config.surfaceSounds
+                && Config.foliage
+                && sound.ready()
+                && FoliageSounds.entryAllowed(dx * dx + dz * dz > 0.00001, actor.isSneaking(), state.wearingBoots));
+        if (entry != null)
+            playMaterial(state, entry, "walk", Config.foliageVolume, actor.posX, actor.boundingBox.minY, actor.posZ);
+        state.lastFoliageX = contactX;
+        state.lastFoliageZ = contactZ;
         state.lastSurface = current;
         state.lastX = actor.posX;
         state.lastZ = actor.posZ;
@@ -584,7 +583,6 @@ public final class FootstepController implements IResourceManagerReloadListener 
         ResolvedContact resolved = new ResolvedContact(state.actor, state.profile, contact, surface);
         state.lastContact = contact;
         state.lastMaterial = surface.material;
-        state.stepped = true;
         consumeContact(state, resolved);
     }
 
@@ -657,13 +655,12 @@ public final class FootstepController implements IResourceManagerReloadListener 
                 surface.contactY,
                 surface.contactZ);
         }
-        if (state.foliage != null && contact.kind != ContactKind.STAND
-            && (!impact || state.impacts.claim("foliage", state.foliage))) {
-            playMaterial(
+        if (Config.foliage && contact.kind != ContactKind.STAND
+            && FoliageSounds.contactAllowed(state.wearingBoots, state.sprinting)) {
+            playFoliage(
                 state,
-                state.foliage,
+                resolver.contactFoliage(state.actor, surface, state.profile.materialMap),
                 event,
-                groupVolume * Config.foliageVolume,
                 surface.contactX,
                 surface.contactY,
                 surface.contactZ);
@@ -683,14 +680,13 @@ public final class FootstepController implements IResourceManagerReloadListener 
             state.liquidMode,
             contact.speed,
             context(state, Config.swimmingVolume, surface.contactX, surface.contactY, surface.contactZ));
-        if (state.foliage != null) playMaterial(
-            state,
-            state.foliage,
-            "walk",
-            Config.foliageVolume,
-            surface.contactX,
-            surface.contactY,
-            surface.contactZ);
+        if (Config.foliage)
+            playFoliage(state, state.messyFoliage, "walk", surface.contactX, surface.contactY, surface.contactZ);
+    }
+
+    private void playFoliage(ActorState state, String names, String event, double x, double y, double z) {
+        String unplayed = state.foliageSounds.claim(names);
+        if (unplayed != null) playMaterial(state, unplayed, event, Config.foliageVolume, x, y, z);
     }
 
     private boolean canPlay(String names) {
@@ -767,13 +763,14 @@ public final class FootstepController implements IResourceManagerReloadListener 
         final ImpactSounds impacts = new ImpactSounds();
         final LandingSoundGate fallSounds = new LandingSoundGate();
         final SourceSoundScale soundScale = new SourceSoundScale();
+        final FoliageSounds foliageSounds = new FoliageSounds();
         SwimmingSounds.Mode liquidMode = SwimmingSounds.Mode.NONE;
         long lastSwimGroup = Long.MIN_VALUE, lastSwimGeneration = Long.MIN_VALUE;
-        String foliage, lastFoliage, lastMaterial;
-        boolean active = true, child, stepped, initialized, synchronizedMotion;
+        String messyFoliage, lastMaterial;
+        boolean active = true, child, initialized, synchronizedMotion, wearingBoots, sprinting;
         int motionGeneration;
         long generation;
-        double lastX, lastZ;
+        double lastX, lastZ, lastFoliageX, lastFoliageZ;
         float pitch = 1, volume = 1;
 
         ActorState(EntityLivingBase actor, EntityProfile profile) {

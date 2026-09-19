@@ -102,7 +102,11 @@ public final class Config {
             0,
             2,
             "Additional volume multiplier for supported hostile mobs.");
-        foliage = bool("effects", "foliage", true, "Rustle vegetation when moving through it.");
+        foliage = bool(
+            "effects",
+            "foliage",
+            true,
+            "Rustle vegetation at foot contacts and on entering marked plants. Boots suppress walking rustles; sprinting restores the contact layer. Sneaking suppresses entry rustles.");
         wet = bool("effects", "wet", true, "Layer wet footsteps in shallow water. Exposed rain has its own settings.");
         swimming = bool(
             "effects",

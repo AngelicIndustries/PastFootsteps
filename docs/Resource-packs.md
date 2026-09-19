@@ -29,8 +29,7 @@ lowercase; special values are recognized regardless of case. `NON_EMITTER` is an
 as `foliage` or `wet`, it returns no association; the resolver may still use its usual wet-layer default.
 `NOT_EMITTER` is an explicit non-emitter and does not fall back to a primitive acoustic. On the `carpet` substrate,
 non-emitting overlays still allow the underlying surface to be considered. `VANILLA` requests native step playback
-for a normal surface rather than a PF acoustic. `MESSY_GROUND` retains its marker behavior; the separate messy-foliage
-strategy remains outside this implementation.
+for a normal surface rather than a PF acoustic. `MESSY_GROUND` on the `.messy` substrate enables the foliage entry strategy described below.
 
 ## Per-entity material maps
 
@@ -76,6 +75,29 @@ by entity-support integrations remain authoritative. Footprint geometry and cont
 Pack layers merge by key, with local files applied last. Invalid local edits retain the last valid version;
 deleting a local map restores its pack mappings. Missing maps fall back to shared mappings and log a warning.
 Use `/pf reload` after edits; `/pf report` includes each tracked actor's selected `materialMap`.
+
+## Foliage mappings
+
+`.foliage` selects the additional acoustic at a foot contact. `.messy: MESSY_GROUND` also enables an entry rustle
+between contacts and the vegetation layer while swimming. For example:
+
+```json
+{
+  "example:reeds.foliage": "straw",
+  "example:reeds.messy": "MESSY_GROUND"
+}
+```
+
+Both lookups honor metadata and the actor's `materialMap`. Set `.messy` to `NOT_EMITTER` to disable entry/swimming
+vegetation while keeping ordinary contact rustles, or `.foliage` to `NOT_EMITTER` to silence that vegetation layer
+entirely. Young crops with non-emitting `.foliage` entries remain silent even when marked messy. Missing `.messy`
+does not disable regular foot-contact foliage, such as rails and vines. Ordinary contacts sample the plant at the
+resolved foot position, excluding solid blocks and the supporting overlay itself; entry detection samples a bounded horizontal area at foot height. It does not rustle plants
+only touching the actor's head. Boots and sprinting follow the rules in [Configuration](Configuration.md).
+
+Overlapping comma-separated foliage names, simultaneous feet, and entry/contact detection share per-actor deduplication.
+An entry rustle also waits at least two ticks after the last foliage playback to avoid rapid boundary chatter.
+Explicit layers authored inside surface acoustic definitions are preserved.
 
 ## Primitive fallback
 
@@ -128,6 +150,12 @@ Supported nodes are `basic`, `events`, `simultaneous` (or an array), `probabilit
 `delayed`, and `empty` (also `silent`). `null` is also an explicit empty child node. These keep a resolved channel
 owned and intentionally silent; omitting an acoustic definition is different and allows normal fallback behavior.
 Delay values are milliseconds, rounded up to game ticks. Ranges use `{"min": 90, "max": 110}`.
+They normally sample randomly. A Java caller can use `AcousticContext.withRangePosition(volume, pitch)` to select
+fractions independently: `0` chooses `min`, `1` chooses `max`, and `Float.NaN` retains random variation for that axis.
+Finite values outside 0..1 extrapolate, including descending ranges; for example, position `2` on volume 20..80
+produces 140 percent before source multipliers. Negative results become zero, range results stay finite, and infinite
+input positions are rejected. Context scaling, category changes and delayed nodes preserve the selected fractions.
+These positions are caller controls, not new JSON keys or CFG settings.
 Missing running/landing/climbing events fall back through the Presence Footsteps movement states; missing `stand`
 stays silent. Newer vanilla sounds referenced by the bundled definitions use similar sounds available in 1.7.
 

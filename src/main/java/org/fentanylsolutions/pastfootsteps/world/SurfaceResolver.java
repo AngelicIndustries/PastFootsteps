@@ -387,25 +387,88 @@ public final class SurfaceResolver {
             && surface.contactZ <= box.maxZ + OVERLAY_EPSILON;
     }
 
+    /** Ordinary foliage belongs to the plant at a resolved foot contact, not arbitrary blocks above the head. */
+    public String contactFoliage(EntityLivingBase actor, Surface surface, String materialMap) {
+        if (actor == null || actor.worldObj == null
+            || surface == null
+            || surface.material != null && !emitter(surface.material)
+            || !validWorldCoordinate(surface.contactX)
+            || !validWorldCoordinate(surface.decalY)
+            || !validWorldCoordinate(surface.contactZ)) return null;
+        int x = floor(surface.contactX), z = floor(surface.contactZ);
+        // Farmland is 1/16 block below its crop. Use the block above the support even when the feet
+        // remain just inside the support's cell; tall supports can extend into that upper cell.
+        int y = Math.max(surface.y + 1, floor(surface.decalY + OVERLAY_EPSILON));
+        World world = actor.worldObj;
+        if (world.blockExists(surface.x, surface.y, surface.z)) {
+            Block support = world.getBlock(surface.x, surface.y, surface.z);
+            if (support instanceof BlockCarpet || support instanceof BlockSnow) return null;
+        }
+        if (!world.blockExists(x, y, z) || x == surface.x && y == surface.y && z == surface.z) return null;
+        Block block = world.getBlock(x, y, z);
+        String name = materials.lookup(block, world.getBlockMetadata(x, y, z), "foliage", materialMap);
+        if (!emitter(name)) return null;
+        float minX = (float) block.getBlockBoundsMinX(), minY = (float) block.getBlockBoundsMinY(),
+            minZ = (float) block.getBlockBoundsMinZ(), maxX = (float) block.getBlockBoundsMaxX(),
+            maxY = (float) block.getBlockBoundsMaxY(), maxZ = (float) block.getBlockBoundsMaxZ();
+        collisionBoxes.clear();
+        try {
+            block.addCollisionBoxesToList(
+                world,
+                x,
+                y,
+                z,
+                AxisAlignedBB.getBoundingBox(x, y, z, x + 1, y + 1, z + 1),
+                collisionBoxes,
+                actor);
+            return collisionBoxes.isEmpty() ? name : null;
+        } catch (RuntimeException ignored) {
+            return null;
+        } finally {
+            block.setBlockBounds(minX, minY, minZ, maxX, maxY, maxZ);
+        }
+    }
+
+    /** Only vegetation explicitly marked MESSY_GROUND can produce a between-contact entry rustle. */
+    public String messyFoliage(EntityLivingBase actor, String materialMap) {
+        return scanFoliage(actor, materialMap, true);
+    }
+
     public String foliage(EntityLivingBase actor) {
         return foliage(actor, "");
     }
 
     public String foliage(EntityLivingBase actor, String materialMap) {
-        if (actor == null || actor.worldObj == null || actor.boundingBox == null) return null;
+        return scanFoliage(actor, materialMap, false);
+    }
+
+    private String scanFoliage(EntityLivingBase actor, String materialMap, boolean messyOnly) {
+        if (actor == null || actor.worldObj == null
+            || actor.boundingBox == null
+            || !validWorldCoordinate(actor.boundingBox.minX)
+            || !validWorldCoordinate(actor.boundingBox.maxX)
+            || !validWorldCoordinate(actor.boundingBox.minY)
+            || !validWorldCoordinate(actor.boundingBox.maxY)
+            || !validWorldCoordinate(actor.boundingBox.minZ)
+            || !validWorldCoordinate(actor.boundingBox.maxZ)) return null;
         Set<String> names = new LinkedHashSet<String>();
         AxisAlignedBB body = actor.boundingBox;
         World world = actor.worldObj;
         int[] xs = sampleCells(body.minX + 0.01D, body.maxX - 0.01D, FOLIAGE_HORIZONTAL_SAMPLES);
-        int[] ys = sampleCells(body.minY + 0.01D, body.maxY - 0.01D, FOLIAGE_VERTICAL_SAMPLES);
+        int feetCell = floor(body.minY + 0.01D), aboveSupport = floor(body.minY - 0.1D) + 1;
+        int[] ys = messyOnly ? feetCell == aboveSupport ? new int[] { feetCell } : new int[] { feetCell, aboveSupport }
+            : sampleCells(body.minY + 0.01D, body.maxY - 0.01D, FOLIAGE_VERTICAL_SAMPLES);
         int[] zs = sampleCells(body.minZ + 0.01D, body.maxZ - 0.01D, FOLIAGE_HORIZONTAL_SAMPLES);
         for (int x : xs) {
             for (int z : zs) {
                 for (int y : ys) {
                     if (x < -30000000 || x >= 30000000 || z < -30000000 || z >= 30000000) continue;
                     if (!world.blockExists(x, y, z)) continue;
-                    String name = materials
-                        .lookup(world.getBlock(x, y, z), world.getBlockMetadata(x, y, z), "foliage", materialMap);
+                    Block block = world.getBlock(x, y, z);
+                    int meta = world.getBlockMetadata(x, y, z);
+                    if (messyOnly && !"MESSY_GROUND".equals(materials.lookup(block, meta, "messy", materialMap)))
+                        continue;
+                    String name = materials.lookup(block, meta, "foliage", materialMap);
                     if (emitter(name)) names.add(name);
                 }
             }

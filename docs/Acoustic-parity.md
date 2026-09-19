@@ -14,7 +14,14 @@ foliage rustles. Shallow supported wading keeps the existing material and wet-la
 An acoustic context can select a position along volume and pitch ranges instead of choosing randomly. Swimming uses
 `clamp(speed * 0.35, 0, 1)` for volume, with remote strokes additionally scaled by `0.125`, following MIT PF. Range
 endpoint order is preserved, including descending ranges. Context scaling and delayed playback retain these controls.
-Other playback keeps random range sampling unless its caller requests interpolation.
+Other playback keeps random range sampling unless its caller requests interpolation. The general range function
+also permits finite extrapolation beyond 0..1, matching MIT `Range.on`; negative results are floored at zero and
+range results are kept finite for playback. Swimming still clamps its own intensity before supplying it.
+
+Both audited MIT branches supply dynamic volume only from swimming and the winged generator. They expose dynamic
+pitch in the acoustic API but contain no built-in callers for it. There is no missing terrestrial speed-to-pitch
+mapping to apply. Winged volume callers, including a landing range position of `2`, belong to the remaining winged
+locomotion work; the shared range engine can now represent them.
 
 The audited 1.7.10 Dynamic Surroundings footstep engine already supplies player swimming through `_SWIM`, using
 `game.player.swim`. PF's existing `Footsteps.process` compatibility hook replaces that path while PF owns swimming;
@@ -36,6 +43,20 @@ fallback; explicit silent definitions retain ownership. Queue limits fail open, 
 native audio. Actor resets/teleports discard old-position pending impacts. Remote packet attribution stays conservative
 when multiple actors could be the source. Hurt cries, damage itself, and water-entry splashes are not intercepted.
 This adapts upstream's broader native-sound filter to PF's per-actor ownership and AET's separate splash effects.
+
+## Foliage
+
+MIT `PFSolver` and `TerrestrialStepSoundGenerator` distinguish ordinary `.foliage` contacts from the
+`MESSY_FOLIAGE_STRATEGY` entry/swimming query requiring `.messy: MESSY_GROUND`. The Forge adapter uses physical
+foot contacts for ordinary lookup and a bounded scan at foot height for marked vegetation. All lookups use the
+selected per-entity material map. Any equipped boots suppress ordinary walking foliage; the sprint state restores
+contact foliage. Extra entry rustles require horizontal motion, no sneaking and no boots. The swimming vegetation
+path uses the messy marker without the ordinary footwear gate, matching the upstream separate swimming branch.
+
+PF keeps its shared contact timing. Per-actor acoustic-name claims suppress duplicate foliage within a tick,
+including simultaneous feet and entry/step overlap. Entry detection uses a two-tick cooldown in place of upstream's
+100 ms polling, tracks occupancy even while muted, and baselines on actor generation changes so teleports and
+support changes do not become entries. Distinct acoustic names can still layer; authored surface sounds are unchanged.
 
 ## Materials and biome variance
 

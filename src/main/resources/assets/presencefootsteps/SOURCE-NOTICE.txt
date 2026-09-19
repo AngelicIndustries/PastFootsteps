@@ -60,6 +60,16 @@ Isolator, Lookup, SoundsKey and AssociationPool at the same MIT revision.
 PastFootsteps selects shared named maps through inherited entity profiles;
 its map paths and metadata selectors are specific to the Forge 1.7 adapter.
 
+Foliage contact, messy-entry/swimming selection and footwear/sprint rules
+are adapted from PFSolver and TerrestrialStepSoundGenerator at the same MIT
+revision. The adapter uses its shared contacts and per-actor acoustic-name
+deduplication with a two-tick entry cooldown instead of a second wall clock.
+
+Acoustic range positions follow VaryingAcoustic and Range.on in both audited
+MIT branches, including finite extrapolation (used by winged landing volume).
+The Forge adapter bounds invalid audio results; swimming clamps its own
+intensity independently. No built-in MIT generator requests gliding_pitch.
+
 The 455 OGG files imported from that namespace are byte-identical MIT-source
 assets and are all mono. Its imported sound event categories were changed
 from "master" to the existing 1.7.10 "player" category. Local aliases cover

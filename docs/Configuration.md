@@ -15,6 +15,13 @@ Open **Mods > PastFootsteps > Config**. Ordinary toggles, volumes and budgets us
 
 Disabling the General master restores the prior footstep engine and disables all PF effects. Disabling material sounds restores native/DS surface audio while equipment and prints retain their own switches. Master volume zero mutes PF audio without disabling footprints. Disabling footprints has no effect on sound timing. Unsupported mobs always keep native sounds.
 
+`effects.foliage` and `volume.foliage` control the additional vegetation layer. Barefoot movement rustles plants at
+foot contacts; wearing any boots suppresses walking rustles, while sprinting restores the contact layer. Plants
+marked `MESSY_GROUND` can also rustle when entered between footsteps, provided the actor is moving, not sneaking,
+and not wearing boots. Standing still adds no entry rustle. Swimming uses marked vegetation at the swimmer's feet.
+The same foliage acoustic is emitted at most once per actor tick, including simultaneous feet and entry detection.
+These rules affect the added foliage layer; surface acoustics can still contain their own authored vegetation sounds.
+
 Swimming uses dedicated water/lava acoustics, with stroke volume following movement in any direction, including vertical movement. Other swimmers are quieter than your own strokes. Supported shallow-water wading keeps the surface and wet layers; swimming skips those dry surface sounds. `effects.swimming=false` restores vanilla or Dynamic Surroundings swimming audio, while `volume.swimming=0` mutes PF's owned swimming channel. Underwater ambience and AET's water-entry splashes remain separate.
 
 `effects.jumpAndLand` controls takeoff and landing audio. Standing takeoff uses a shuffle; moving takeoff and soft landing use one foot's sound. Running soft landings use the running acoustic, and drops over 0.9 blocks use a grouped hard landing. Identical materials within an impact play once; landing across different materials can play both. Hard landings remain audible while sneaking. Disabling this setting retains physical landing contacts and footprints, and leaves native fall sounds available.
