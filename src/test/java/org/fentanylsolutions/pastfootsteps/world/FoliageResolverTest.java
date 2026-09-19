@@ -42,6 +42,7 @@ public class FoliageResolverTest {
     private static final Block AIR = new Block(Material.air) {};
     private static final Block FOLIAGE = register(253, "test:foliage", new TestBlock(false));
     private static final Block SOLID = register(254, "test:solid_plant", new TestBlock(true));
+    private static final Block LOW_FOLIAGE = register(255, "test:low_foliage", new LowPlant());
 
     @Test
     public void contactUsesFoliageAtPhysicalContactAndMessyRequiresMarker() {
@@ -339,6 +340,88 @@ public class FoliageResolverTest {
         assertNull(resolver.bodyFoliage(cow, ""));
     }
 
+    @Test
+    public void lowFoliageUsesFootChannelAtFeetAndBodyChannelWhenRaised() {
+        TestWorld world = new TestWorld();
+        world.put(0, 1, 0, LOW_FOLIAGE, 0);
+        EntityCow cow = actor(world);
+        SurfaceResolver resolver = new SurfaceResolver(
+            materials("{\"test:low_foliage.foliage_low\":\"low_brush\",\"test:low_foliage.messy\":\"MESSY_GROUND\"}"));
+        SurfaceResolver.Surface floor = new SurfaceResolver.Surface(
+            "stone",
+            null,
+            null,
+            0,
+            1,
+            0,
+            0,
+            0,
+            true,
+            false,
+            0.5,
+            1,
+            0.5);
+
+        assertEquals("low_brush", resolver.contactFoliage(cow, floor, ""));
+        assertEquals("low_brush", resolver.messyFoliage(cow, ""));
+        assertNull(resolver.bodyFoliage(cow, ""));
+
+        world.put(0, 2, 0, LOW_FOLIAGE, 0);
+        cow.boundingBox.setBounds(0.1, 1, 0.1, 0.9, 2.8, 0.9);
+        assertEquals("low_brush", resolver.bodyFoliage(cow, ""));
+    }
+
+    @Test
+    public void ordinaryFoliageStillReachesBodyButEntityLowOverrideMutesLowPlant() {
+        TestWorld world = new TestWorld();
+        world.put(0, 2, 0, FOLIAGE, 0);
+        EntityCow cow = actor(world);
+        cow.boundingBox.setBounds(0.1, 1, 0.1, 0.9, 2.8, 0.9);
+        SurfaceResolver ordinary = new SurfaceResolver(materials("{\"test:foliage.foliage\":\"brush\"}"));
+        assertEquals("brush", ordinary.bodyFoliage(cow, ""));
+
+        world.put(0, 2, 0, LOW_FOLIAGE, 0);
+        SurfaceResolver muted = new SurfaceResolver(
+            materials(
+                "{\"test:low_foliage.foliage_low\":\"brush\"}",
+                "{\"test:low_foliage.foliage_low\":\"NOT_EMITTER\"}"));
+        assertNull(muted.bodyFoliage(cow, "hooves"));
+    }
+
+    @Test
+    public void metadataCanSwitchBetweenLowAndOrdinaryFoliageMappings() {
+        Block plant = register(393, "test:metadata_foliage", new BodyPlant());
+        TestWorld world = new TestWorld();
+        world.put(0, 1, 0, plant, 0);
+        EntityCow cow = actor(world);
+        SurfaceResolver resolver = new SurfaceResolver(
+            materials(
+                "{\"test:metadata_foliage^0.foliage_low\":\"low\","
+                    + "\"test:metadata_foliage^0.messy\":\"MESSY_GROUND\","
+                    + "\"test:metadata_foliage^1.foliage\":\"ordinary\"}"));
+        SurfaceResolver.Surface floor = new SurfaceResolver.Surface(
+            "stone",
+            null,
+            null,
+            0,
+            1,
+            0,
+            0,
+            0,
+            true,
+            false,
+            0.5,
+            1,
+            0.5);
+
+        assertEquals("low", resolver.contactFoliage(cow, floor, ""));
+        world.put(0, 1, 0, plant, 1);
+        assertEquals("ordinary", resolver.contactFoliage(cow, floor, ""));
+        world.put(0, 2, 0, plant, 1);
+        cow.boundingBox.setBounds(0.1, 1, 0.1, 0.9, 2.8, 0.9);
+        assertEquals("ordinary", resolver.bodyFoliage(cow, ""));
+    }
+
     private static final class BodyPlant extends Block {
 
         BodyPlant() {
@@ -349,6 +432,19 @@ public class FoliageResolverTest {
         public void setBlockBoundsBasedOnState(IBlockAccess world, int x, int y, int z) {
             int meta = world.getBlockMetadata(x, y, z);
             setBlockBounds(0, 0, 0, meta == 2 ? 0.0625F : 1, meta == 0 ? 0.2F : 0.8F, 1);
+        }
+
+        @Override
+        public AxisAlignedBB getCollisionBoundingBoxFromPool(World world, int x, int y, int z) {
+            return null;
+        }
+    }
+
+    private static final class LowPlant extends Block {
+
+        LowPlant() {
+            super(Material.plants);
+            setBlockBounds(0, 0, 0, 1, 0.6F, 1);
         }
 
         @Override

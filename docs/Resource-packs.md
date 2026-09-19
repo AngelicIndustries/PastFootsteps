@@ -20,7 +20,7 @@ replace entries with the same key. If one layer is malformed, that layer is skip
 ```
 
 `^0` through `^15` select metadata and take precedence over the block's generic entry. The optional suffix is one of
-`carpet`, `foliage`, `messy`, `wet`, or `bigger`. Values may name one acoustic, a comma-separated composite, or a
+`carpet`, `foliage`, `foliage_low`, `messy`, `wet`, or `bigger`. Values may name one acoustic, a comma-separated composite, or a
 special value such as `NOT_EMITTER`, `MESSY_GROUND`, `VANILLA`, or `UNASSIGNED`. Acoustic names are normalized to
 lowercase; special values are recognized regardless of case. `NON_EMITTER` is an alias for `NOT_EMITTER`.
 
@@ -176,7 +176,7 @@ Use `/pf reload` after edits; `/pf report` includes each tracked actor's selecte
 
 ## Foliage mappings
 
-`.foliage` selects the additional acoustic at a foot contact. `.messy: MESSY_GROUND` also enables an entry rustle
+`.foliage` selects the additional acoustic at a foot contact. `.foliage_low` adds an explicit short-plant layer. `.messy: MESSY_GROUND` also enables an entry rustle
 between contacts and the vegetation layer while swimming. For example:
 
 ```json
@@ -188,7 +188,7 @@ between contacts and the vegetation layer while swimming. For example:
 
 Both lookups honor metadata and the actor's `materialMap`. Set `.messy` to `NOT_EMITTER` to disable the extra
 foot-level entry/swimming query while keeping normal contact rustles. `.foliage: NOT_EMITTER` silences that
-vegetation's additional foot and body layers entirely. Ordinary foot contacts exclude solid blocks and the
+channel's additional foot and body sounds. If a plant also has a `.foliage_low` mapping, mute it separately. Ordinary foot contacts exclude solid blocks and the
 supporting overlay itself.
 
 Body contacts also use `.foliage`, without requiring `.messy`. The bounded scan checks current plant bounds
@@ -196,6 +196,25 @@ against the actor above the footwear region. A short plant confined to the boots
 tall grass, reeds and head-height vines can rustle with boots equipped. Solid collision intersecting the body,
 unloaded cells and invalid bounds are excluded. State bounds are restored after querying. Custom plants opt in
 through the same mappings; no registry-name list determines their body eligibility.
+
+Use `.foliage_low` instead of `.foliage` for short plants whose selection boxes would otherwise extend above
+boots, such as flowers and small mushrooms. At foot level, this channel follows the low-layer footwear rules:
+boots suppress walking/entry rustles, while sprinting retains the existing contact-rustle exception. When the same
+plant is raised to touch the torso/head, its low mapping can still contribute a physical body rustle. This is an
+explicit mapping choice, not a class or registry-name guess. Both channels honor metadata, wildcards, Ore Dictionary
+groups and per-entity maps; overlapping acoustic names are deduplicated. Neither changes the ground footstep.
+
+```json
+{
+  "example:small_flower.foliage_low": "plant_brush",
+  "example:small_flower.messy": "MESSY_GROUND"
+}
+```
+
+Bundled yellow/red flowers and brown/red mushrooms use `plant_brush`, a quieter brush recording with no dirt
+layer. Pumpkin/melon stems use it too: metadata 0..2 selects the low channel, and 3..7 selects ordinary foliage as
+the stem grows. Existing tall vegetation and intentionally silent early wheat/carrot/potato stages retain their
+mappings. The new rustle uses the existing foliage toggle and volume control.
 
 For vanilla `BlockDoublePlant` and subclasses, foliage/messy lookup uses the lower half's variant metadata for
 both halves. The lower half must be loaded, the same block, and a valid lower variant. Orphan or malformed upper

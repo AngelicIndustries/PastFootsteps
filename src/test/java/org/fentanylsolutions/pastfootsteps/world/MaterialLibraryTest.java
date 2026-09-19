@@ -458,6 +458,19 @@ public class MaterialLibraryTest {
     }
 
     @Test
+    public void lowFoliagePatternsRespectMetadataWithoutLeakingIntoOrdinaryFoliage() {
+        Block plant = register(531, "test:short_plant", new TestBlock());
+        Resources resources = new Resources();
+        resources.add(
+            "config/blockmap.json",
+            "{\"test:*.foliage_low\":\"plant_brush\"," + "\"test:short_plant^1.foliage_low\":\"NOT_EMITTER\"}");
+        MaterialLibrary materials = load(resources);
+        assertEquals("plant_brush", materials.lookup(plant, 0, "foliage_low"));
+        assertEquals("NOT_EMITTER", materials.lookup(plant, 1, "foliage_low"));
+        assertNull(materials.lookup(plant, 0, "foliage"));
+    }
+
+    @Test
     public void mappingReportGroupsMetadataAndReportsChannelsAndMissingAcoustics() {
         Block block = register(520, "test:report_channels", new TestBlock());
         Resources resources = new Resources();
@@ -465,10 +478,10 @@ public class MaterialLibraryTest {
             "config/blockmap.json",
             "{\"test:report_channels\":\"known\",\"test:report_channels^1\":\"missing_component\","
                 + "\"test:report_channels.carpet\":\"carpet\",\"test:report_channels.foliage\":\"foliage\","
-                + "\"test:report_channels.messy\":\"messy\",\"test:report_channels.wet\":\"wet\","
+                + "\"test:report_channels.foliage_low\":\"low\",\"test:report_channels.messy\":\"messy\",\"test:report_channels.wet\":\"wet\","
                 + "\"test:report_channels.bigger\":\"bigger\"}");
         MaterialLibrary library = load(resources);
-        SoundEngine sound = acoustics("known", "carpet", "foliage", "messy", "wet", "bigger");
+        SoundEngine sound = acoustics("known", "carpet", "foliage", "low", "messy", "wet", "bigger");
         Map<String, Block> blocks = Collections.singletonMap("test:report_channels", block);
 
         JsonObject root = MappingReport.create(library, sound, "", false, blocks);
@@ -497,7 +510,7 @@ public class MaterialLibraryTest {
                 .toString()
                 .contains("15"));
         JsonObject resolution = ordinary.getAsJsonObject("resolution");
-        for (String channel : new String[] { "normal", "carpet", "foliage", "messy", "wet", "bigger" })
+        for (String channel : new String[] { "normal", "carpet", "foliage", "foliage_low", "messy", "wet", "bigger" })
             assertTrue(channel, resolution.has(channel));
         assertEquals(
             "known",

@@ -173,6 +173,29 @@ public class FoliageSoundsTest {
     }
 
     @Test
+    public void smallPlantRustlesUseOnlyQuietBrushAndStaySilentAtRest() throws Exception {
+        List<String> played = new ArrayList<>();
+        SoundEngine sound = new SoundEngine((name, volume, pitch, context) -> {
+            played.add(name);
+            assertTrue(volume > 0 && volume < 0.4F);
+        });
+        try (InputStreamReader reader = new InputStreamReader(
+            getClass().getResourceAsStream("/assets/presencefootsteps/config/acoustics/plant_brush.json"),
+            StandardCharsets.UTF_8)) {
+            sound.load("plant_brush", new JsonParser().parse(reader));
+        }
+        AcousticContext context = new AcousticContext(0, 0, 0, 1, 1);
+        for (String event : Arrays.asList("walk", "run", "jump", "land", "rustle")) {
+            played.clear();
+            sound.play("plant_brush", event, context);
+            assertEquals(Collections.singletonList("pf_presence.brush.brush_through"), played);
+        }
+        played.clear();
+        sound.play("plant_brush", "stand", context);
+        assertTrue(played.isEmpty());
+    }
+
+    @Test
     public void bodyEventAllowsPackOverridesAndFallsBackForOtherAcoustics() {
         List<String> played = new ArrayList<>();
         SoundEngine sound = new SoundEngine((name, volume, pitch, context) -> played.add(name));

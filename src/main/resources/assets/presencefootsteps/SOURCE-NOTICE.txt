@@ -145,3 +145,8 @@ snapshot of successful loaded JSON definitions, including local last-valid
 fallbacks. It preserves selected source syntax instead of normalizing runtime
 nodes with upstream codecs. The snapshot and archive writer are local work;
 no audio files are exported.
+
+The plant_brush definition reuses the existing MIT brush_through sound at
+reduced volume. Explicit flower, mushroom and stem mappings and the foliage_low
+channel are local additions, preserving footwear gating for short plants at the
+feet without suppressing raised plants touching the body. No recordings changed.

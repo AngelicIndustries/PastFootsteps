@@ -41,7 +41,7 @@ final class BlockMaterialMap {
 
     private static final int MAX_KEY_LENGTH = 256;
     private static final int MAX_CACHE_ENTRIES = 2048;
-    private static final String[] SUBSTRATES = { "carpet", "foliage", "messy", "wet", "bigger" };
+    private static final String[] SUBSTRATES = { "carpet", "foliage", "foliage_low", "messy", "wet", "bigger" };
 
     private final Map<String, String> exact;
     private final List<GroupRule> groups;

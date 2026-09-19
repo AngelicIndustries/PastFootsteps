@@ -46,3 +46,5 @@ JSON overrides are documented in [Resource packs](Resource-packs.md), [Footprint
 Use `/pf mappings all` or `/pf mappings unmapped` to inspect registered block mappings. See [Diagnostics](Diagnostics.md) for named maps, output files and report limitations.
 
 `/pf acoustics` exports loaded sound definitions as a ZIP for inspection and editing. See [Acoustic export](Diagnostics.md#acoustic-export).
+
+Flowers, small mushrooms and pumpkin/melon stems now have quiet plant rustles. Flowers, mushrooms and young stems use the low foliage channel, so boots suppress walking rustles; the existing sprint exception remains. Taller foliage and raised plants touching the body can still rustle with boots.

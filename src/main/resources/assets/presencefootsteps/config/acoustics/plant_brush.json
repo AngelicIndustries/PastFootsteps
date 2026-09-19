@@ -1,0 +1,39 @@
+{
+  "type": "events",
+  "walk": {
+    "type": "basic",
+    "name": "pf_presence.brush.brush_through",
+    "volume": 20,
+    "pitch": {
+      "min": 90,
+      "max": 110
+    }
+  },
+  "jump": {
+    "type": "basic",
+    "name": "pf_presence.brush.brush_through",
+    "volume": 20,
+    "pitch": {
+      "min": 90,
+      "max": 110
+    }
+  },
+  "land": {
+    "type": "basic",
+    "name": "pf_presence.brush.brush_through",
+    "volume": 20,
+    "pitch": {
+      "min": 90,
+      "max": 110
+    }
+  },
+  "rustle": {
+    "type": "basic",
+    "name": "pf_presence.brush.brush_through",
+    "volume": 20,
+    "pitch": {
+      "min": 90,
+      "max": 110
+    }
+  }
+}

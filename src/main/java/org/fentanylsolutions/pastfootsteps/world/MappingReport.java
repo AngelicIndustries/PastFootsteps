@@ -18,7 +18,7 @@ import com.google.gson.JsonPrimitive;
 /** On-demand registry diagnostics. Never requests world state, tile covers or creative item variants. */
 public final class MappingReport {
 
-    private static final String[] SUBSTRATES = { "", "carpet", "foliage", "messy", "wet", "bigger" };
+    private static final String[] SUBSTRATES = { "", "carpet", "foliage", "foliage_low", "messy", "wet", "bigger" };
 
     private MappingReport() {}
 

@@ -483,7 +483,7 @@ public final class SurfaceResolver {
         Block block = world.getBlock(x, y, z);
         BlockMaterial appearance = foliageAppearance(world, x, y, z, block);
         if (appearance == null) return null;
-        String name = materials.lookup(appearance.block, appearance.metadata, "foliage", materialMap);
+        String name = foliageNames(appearance, materialMap, true);
         if (!emitter(name)) return null;
         float minX = (float) block.getBlockBoundsMinX(), minY = (float) block.getBlockBoundsMinY(),
             minZ = (float) block.getBlockBoundsMinZ(), maxX = (float) block.getBlockBoundsMaxX(),
@@ -556,12 +556,23 @@ public final class SurfaceResolver {
                     if (messyOnly && !"MESSY_GROUND"
                         .equals(materials.lookup(appearance.block, appearance.metadata, "messy", materialMap)))
                         continue;
-                    String name = materials.lookup(appearance.block, appearance.metadata, "foliage", materialMap);
+                    // Explicit short plants at the feet stay in the footwear-gated channel even when
+                    // their selection box is taller than a boot. Raised plants can still touch the body.
+                    boolean includeLow = !bodyOnly || y > Math.max(feetCell, aboveSupport);
+                    String name = foliageNames(appearance, materialMap, includeLow);
                     if (emitter(name) && (!bodyOnly || touchesBody(actor, block, x, y, z, upperBody))) names.add(name);
                 }
             }
         }
         return names.isEmpty() ? null : String.join(",", names);
+    }
+
+    private String foliageNames(BlockMaterial appearance, String materialMap, boolean includeLow) {
+        String ordinary = materials.lookup(appearance.block, appearance.metadata, "foliage", materialMap);
+        if (!includeLow) return ordinary;
+        String low = materials.lookup(appearance.block, appearance.metadata, "foliage_low", materialMap);
+        if (!emitter(ordinary)) return low;
+        return emitter(low) && !ordinary.equals(low) ? ordinary + "," + low : ordinary;
     }
 
     /** Double-plant upper metadata describes orientation, not the plant variant. */

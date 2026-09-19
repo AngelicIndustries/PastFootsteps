@@ -6,7 +6,7 @@
 
 Mapping reports cover registered blocks at metadata values 0 through 15 and group metadata entries with equal results. They do not scan the world. Static base-material inheritance is included in the effective result for each selected map.
 
-The `unmapped` mode lists ordinary mappings that still rely on primitive or native fallback, or that reference a missing acoustic definition. Intentional silence and explicit native mappings are excluded. Lookup errors are included. A primitive fallback is a candidate for refinement, not necessarily a broken or silent block. Missing acoustic checks concern definitions, not the existence of every referenced audio file.
+The `unmapped` mode lists ordinary mappings that still rely on primitive or native fallback, or that reference a missing acoustic definition. Intentional silence and explicit native mappings are excluded. Lookup errors are included. Missing acoustic references are checked in every reported channel, including `foliage_low`. The absence of a foliage mapping alone does not mark a block as unmapped. A primitive fallback is a candidate for refinement, not necessarily a broken or silent block. Missing acoustic checks concern definitions, not the existence of every referenced audio file.
 
 Runtime tile covers and normalized upper double-plant states depend on world state, so inspect those through `/pf report` while the relevant blocks are loaded.
 
