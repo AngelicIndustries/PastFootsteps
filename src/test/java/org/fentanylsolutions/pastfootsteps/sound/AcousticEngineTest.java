@@ -127,6 +127,25 @@ public class AcousticEngineTest {
     }
 
     @Test
+    public void rangePositionsInterpolateClampAndSurviveScalingAndDelay() {
+        load(
+            "{\"type\":\"basic\",\"name\":\"range\",\"volume\":{\"min\":20,\"max\":80},\"pitch\":{\"min\":120,\"max\":80}}");
+        AcousticContext positioned = new AcousticContext(0, 0, 0, 0.5F, 2.0F).withRangePosition(0.25F, 2.0F)
+            .scale(0.5F, 0.5F);
+        engine.play("test", "walk", positioned);
+        assertEquals(0.0875F, volumes.get(0), 0.00001F);
+        assertEquals(0.8F, pitches.get(0), 0.00001F);
+
+        load(
+            "{\"type\":\"delayed\",\"delay\":50,\"acoustic\":{\"type\":\"basic\",\"name\":\"delayed\",\"volume\":{\"min\":20,\"max\":80},\"pitch\":{\"min\":120,\"max\":80}}}");
+        engine.play("test", "walk", positioned.withRangePosition(-1.0F, -1.0F));
+        engine.tick();
+        assertEquals(2, volumes.size());
+        assertEquals(0.05F, volumes.get(1), 0.00001F);
+        assertEquals(1.2F, pitches.get(1), 0.00001F);
+    }
+
+    @Test
     public void delayedSoundsKeepTheirContextAndClearOnlyPending() {
         load("{\"type\":\"delayed\",\"delay\":{\"min\":100,\"max\":100},\"acoustic\":\"delayed\"}");
         engine.play("test", "walk", new AcousticContext(0, 0, 0, 0.25f, 0.75f));

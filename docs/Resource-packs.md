@@ -77,6 +77,11 @@ Delay values are milliseconds, rounded up to game ticks. Ranges use `{"min": 90,
 Missing running/landing/climbing events fall back through the Presence Footsteps movement states; missing `stand`
 stays silent. Newer vanilla sounds referenced by the bundled definitions use similar sounds available in 1.7.
 
+Swimming reads the `swim` event in `swim_water.json` or `swim_lava.json`. Its volume range is interpolated by movement
+intensity, while pitch retains random variation. Override these files in a pack or use local
+`config/pastfootsteps/acoustics/swim_water.json` and `swim_lava.json`. An `empty` definition intentionally mutes PF's
+owned channel; use the Swimming sounds toggle to hand that channel back to vanilla or Dynamic Surroundings.
+
 Relative sound names beginning with `pf_presence.` or `equipment.` select the ordinary `presencefootsteps` sound
 event for your own player and its `presencefootstepsmono` counterpart for other players and mobs. Mono recordings
 allow those nearby sounds to follow the actor's position. If no mono event is registered, playback falls back to

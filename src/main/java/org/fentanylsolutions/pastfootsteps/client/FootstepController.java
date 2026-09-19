@@ -11,6 +11,7 @@ import java.util.List;
 import java.util.Map;
 import java.util.Set;
 
+import net.minecraft.block.material.Material;
 import net.minecraft.client.Minecraft;
 import net.minecraft.client.audio.PositionedSoundRecord;
 import net.minecraft.client.resources.IResource;
@@ -42,6 +43,7 @@ import org.fentanylsolutions.pastfootsteps.profile.ProfileLibrary;
 import org.fentanylsolutions.pastfootsteps.sound.AcousticContext;
 import org.fentanylsolutions.pastfootsteps.sound.SoundEngine;
 import org.fentanylsolutions.pastfootsteps.sound.SoundNames;
+import org.fentanylsolutions.pastfootsteps.sound.SwimmingSounds;
 import org.fentanylsolutions.pastfootsteps.world.MaterialLibrary;
 import org.fentanylsolutions.pastfootsteps.world.SurfaceResolver;
 import org.fentanylsolutions.pastfootsteps.world.SurfaceResolver.Surface;
@@ -67,7 +69,9 @@ public final class FootstepController implements IResourceManagerReloadListener 
 
     /** Native suppression and contact production share the same selected actor state. */
     public static boolean shouldReplace(Entity entity) {
-        return Config.surfaceSounds && INSTANCE.sound.ready() && ownsContacts(entity);
+        if (!Config.surfaceSounds || !INSTANCE.sound.ready() || !ownsContacts(entity)) return false;
+        ActorState state = INSTANCE.actors.get(entity);
+        return SwimmingSounds.canReplace(state.liquidMode, Config.swimming, INSTANCE.sound);
     }
 
     public static boolean ownsContacts(Entity entity) {
@@ -79,9 +83,10 @@ public final class FootstepController implements IResourceManagerReloadListener 
     public static boolean suppressSound(Entity entity, String name) {
         if (!shouldReplace(entity) || name == null) return false;
         String path = name.startsWith("minecraft:") ? name.substring(10) : name;
-        if (path.startsWith("step.") || path.equals("game.player.swim") || path.equals("game.neutral.swim"))
-            return true;
         ActorState state = INSTANCE.actors.get(entity);
+        if (path.startsWith("step.")) return true;
+        if (path.equals("game.player.swim") || path.equals("game.neutral.swim"))
+            return state != null && state.liquidMode != SwimmingSounds.Mode.NONE;
         return state != null && state.surface != null && sameSound(name, state.surface.vanillaSound);
     }
 
@@ -185,6 +190,8 @@ public final class FootstepController implements IResourceManagerReloadListener 
             entry.addProperty("gait", state.profile.gait.id);
             entry.addProperty("phase", state.tracker.phase());
             entry.addProperty("material", state.lastMaterial);
+            entry.addProperty("liquidMode", state.liquidMode.name());
+            entry.addProperty("surfaceAudioOwned", shouldReplace(state.actor));
             entry.addProperty("serverMotion", state.synchronizedMotion);
             entry.addProperty("support", state.support == null ? "block" : EntityList.getEntityString(state.support));
             if (state.lastContact != null) {
@@ -362,7 +369,10 @@ public final class FootstepController implements IResourceManagerReloadListener 
         state.surface = current;
         boolean grounded = motion != null ? motion.grounded
             : actor == Minecraft.getMinecraft().thePlayer ? actor.onGround : current != null && current.grounded;
-        boolean swimming = motion != null ? motion.swimming : actor.isInWater() || resolver.inLava(actor);
+        boolean inLava = !actor.isInWater() && resolver.inLava(actor);
+        boolean swimming = motion != null ? motion.swimming : actor.isInWater() || inLava;
+        state.liquidMode = SwimmingSounds
+            .mode(swimming, inLava, current != null && current.grounded, actor.isInsideOfMaterial(Material.water));
         BiomeGenBase biome = actor.worldObj
             .getBiomeGenForCoords((int) Math.floor(actor.posX), (int) Math.floor(actor.posZ));
         state.pitch += (materials.biomePitch(biome) - state.pitch) * 0.05f;
@@ -501,11 +511,15 @@ public final class FootstepController implements IResourceManagerReloadListener 
         footprints.contact(resolved);
         contactDebug.add(resolved);
         org.fentanylsolutions.pastfootsteps.api.ContactEvents.publish(resolved);
-        if (resolved.actor.isSneaking()) return;
+        if (resolved.actor.isSneaking() && !state.liquidMode.swimming()) return;
         if (!Config.jumpLand && (contact.kind == ContactKind.JUMP || contact.kind.isLanding())) return;
         float groupVolume = (float) (1 / Math.sqrt(contact.groupSize));
         equipment.play(resolved, context(state, groupVolume, surface.contactX, surface.contactY, surface.contactZ));
         if (!Config.surfaceSounds || !sound.ready()) return;
+        if (state.liquidMode.swimming()) {
+            consumeSwimming(state, resolved);
+            return;
+        }
         String event = contact.kind.acousticKey;
         if (surface.material == null || SurfaceResolver.emitter(surface.material) && !canPlay(surface.material)) {
             if (contact.kind != ContactKind.STAND) {
@@ -551,6 +565,29 @@ public final class FootstepController implements IResourceManagerReloadListener 
                 surface.contactY,
                 surface.contactZ);
         }
+    }
+
+    private void consumeSwimming(ActorState state, ResolvedContact resolved) {
+        Contact contact = resolved.contact;
+        if (contact.kind != ContactKind.SWIM || !SwimmingSounds.canReplace(state.liquidMode, Config.swimming, sound)
+            || state.lastSwimGroup == contact.group && state.lastSwimGeneration == state.generation) return;
+        // Paired feet are one stroke, not two overlapping swim samples.
+        state.lastSwimGroup = contact.group;
+        state.lastSwimGeneration = state.generation;
+        Surface surface = resolved.surface;
+        SwimmingSounds.play(
+            sound,
+            state.liquidMode,
+            contact.speed,
+            context(state, Config.swimmingVolume, surface.contactX, surface.contactY, surface.contactZ));
+        if (state.foliage != null) playMaterial(
+            state,
+            state.foliage,
+            "walk",
+            Config.foliageVolume,
+            surface.contactX,
+            surface.contactY,
+            surface.contactZ);
     }
 
     private boolean canPlay(String names) {
@@ -617,6 +654,8 @@ public final class FootstepController implements IResourceManagerReloadListener 
         Entity support;
         Surface surface, lastSurface;
         Contact lastContact;
+        SwimmingSounds.Mode liquidMode = SwimmingSounds.Mode.NONE;
+        long lastSwimGroup = Long.MIN_VALUE, lastSwimGeneration = Long.MIN_VALUE;
         String foliage, lastFoliage, lastMaterial;
         boolean active = true, child, stepped, initialized, synchronizedMotion;
         int motionGeneration;

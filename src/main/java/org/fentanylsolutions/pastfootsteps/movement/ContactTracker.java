@@ -18,7 +18,7 @@ public final class ContactTracker implements ContactGenerator {
     private final GaitDefinition.Contact[] walk, run;
     private final Random random;
     private boolean initialized, grounded, moving, cycleRunning, running, jumped, climbing, swimming;
-    private double x, y, z, peakY, phase, lastDx, lastDz, speed;
+    private double x, y, z, peakY, phase, lastDx, lastDz, speed, liquidSpeed;
     private double suspectDx, suspectDy, suspectDz;
     private boolean suspectMotion;
     private int airTicks, groundMisses, idleTicks, nextStand, shuffleCooldown;
@@ -98,6 +98,7 @@ public final class ContactTracker implements ContactGenerator {
         double distance = onLadder || inLiquid ? Math.sqrt(horizontal * horizontal + dy * dy) : horizontal;
         boolean nowMoving = distance > 0.003;
         speed += (horizontal - speed) * 0.35;
+        liquidSpeed = inLiquid ? liquidSpeed + (distance - liquidSpeed) * 0.35 : 0;
         // Remote mobs rarely expose a useful sprint flag. Their actual displacement determines running.
         if (sprinting || speed > runSpeed) running = true;
         else if (speed < runSpeed * 0.8) running = false;
@@ -232,7 +233,7 @@ public final class ContactTracker implements ContactGenerator {
                             y + (newY - y) * fraction,
                             z + (newZ - z) * fraction,
                             at,
-                            speed));
+                            kind == ContactKind.SWIM ? liquidSpeed : speed));
                     emitted++;
                 }
             }
@@ -272,7 +273,7 @@ public final class ContactTracker implements ContactGenerator {
         climbing = onLadder;
         swimming = inLiquid;
         jumped = moving = running = cycleRunning = false;
-        phase = lastDx = lastDz = speed = 0;
+        phase = lastDx = lastDz = speed = liquidSpeed = 0;
         idleTicks = airTicks = groundMisses = shuffleCooldown = 0;
         nextStand = nextStandInterval();
         kind = ContactKind.STAND;

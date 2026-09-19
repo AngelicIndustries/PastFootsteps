@@ -289,7 +289,11 @@ public final class AcousticEngine {
     private Acoustic basic(String name, Range volume, Range pitch) {
         return (context, event) -> {
             if (name.isEmpty()) return; // Intentional silence, not an absent event.
-            player.play(name, volume.sample(random) * context.volume, pitch.sample(random) * context.pitch, context);
+            player.play(
+                name,
+                volume.sample(random, context.volumePosition) * context.volume,
+                pitch.sample(random, context.pitchPosition) * context.pitch,
+                context);
         };
     }
 
@@ -343,12 +347,17 @@ public final class AcousticEngine {
             // Upstream packs contain descending ranges; sampling either direction is valid.
             finite(min);
             finite(max);
-            this.min = Math.min(min, max);
-            this.max = Math.max(min, max);
+            this.min = min;
+            this.max = max;
         }
 
         float sample(Random random) {
-            return min + (max - min) * random.nextFloat();
+            return sample(random, Float.NaN);
+        }
+
+        float sample(Random random, float position) {
+            float fraction = Float.isNaN(position) ? random.nextFloat() : Math.max(0, Math.min(1, position));
+            return min + (max - min) * fraction;
         }
     }
 

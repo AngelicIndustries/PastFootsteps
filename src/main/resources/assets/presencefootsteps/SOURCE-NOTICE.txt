@@ -33,6 +33,11 @@ c009d4a9fd10e9c3fa8bc75238bf26267f17ca1c:
 
 https://github.com/Sollace/Presence-Footsteps/tree/c009d4a9fd10e9c3fa8bc75238bf26267f17ca1c
 
+The swimming acoustic selection, movement-controlled volume ranges, and
+remote swim scaling are also adapted from TerrestrialStepSoundGenerator
+and VaryingAcoustic at this MIT-licensed revision. PastFootsteps supplies
+timing through its shared contact engine and retains shallow-water wading.
+
 The 455 OGG files imported from that namespace are byte-identical MIT-source
 assets and are all mono. Its imported sound event categories were changed
 from "master" to the existing 1.7.10 "player" category. Local aliases cover

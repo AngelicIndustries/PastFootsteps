@@ -182,6 +182,62 @@ public class ContactTrackerTest {
     }
 
     @Test
+    public void verticalSwimmingHasStrokeIntensityInBothDirectionsAndNoIdleContacts() {
+        Fixture f = new Fixture(BIPED);
+        f.ground = false;
+        f.swimming = true;
+        f.stationary = true;
+        f.at(0, 0, 0);
+        for (int i = 1; i <= 24; i++) f.at(0, i * 0.1, 0);
+        for (int i = 1; i <= 24; i++) f.at(0, 2.4 - i * 0.1, 0);
+        assertEquals(4, f.events.size());
+        for (Contact contact : f.events) {
+            assertEquals(ContactKind.SWIM, contact.kind);
+            assertEquals(0.1, contact.speed, 0.001);
+        }
+        f.events.clear();
+        for (int i = 0; i < 200; i++) f.at(0, 0, 0);
+        assertTrue(f.events.isEmpty());
+    }
+
+    @Test
+    public void enteringAndLeavingWaterDoNotManufactureJumpOrLandingSounds() {
+        Fixture f = new Fixture(BIPED);
+        f.at(0, 0, 0);
+        f.ground = false;
+        f.swimming = true;
+        for (int i = 1; i <= 24; i++) f.at(i * 0.1, -0.1, 0);
+        assertEquals(2, f.events.size());
+        for (Contact contact : f.events) assertEquals(ContactKind.SWIM, contact.kind);
+        f.events.clear();
+        f.swimming = false;
+        f.ground = true;
+        f.at(2.4, 0, 0);
+        assertTrue(f.events.isEmpty());
+        for (int i = 1; i <= 12; i++) f.at(2.4 + i * 0.1, 0, 0);
+        assertEquals(1, f.events.size());
+        assertEquals(ContactKind.WALK, f.events.get(0).kind);
+    }
+
+    @Test
+    public void underwaterTeleportResetsStrokePhaseAndIntensity() {
+        Fixture f = new Fixture(BIPED);
+        f.ground = false;
+        f.swimming = true;
+        f.at(0, 0, 0);
+        f.at(0, 0.9, 0);
+        f.at(0, 100, 0);
+        assertTrue(f.tracker.rebaselined());
+        assertTrue(f.events.isEmpty());
+        for (int i = 1; i <= 11; i++) f.at(0, 100 + i * 0.1, 0);
+        assertTrue(f.events.isEmpty());
+        f.at(0, 101.2, 0);
+        assertEquals(1, f.events.size());
+        assertEquals(ContactKind.SWIM, f.events.get(0).kind);
+        assertEquals(0.1, f.events.get(0).speed, 0.001);
+    }
+
+    @Test
     public void mutedSneakingAdvancesPhaseWithoutContactDebt() {
         Fixture f = new Fixture(BIPED);
         f.at(0, 0, 0);

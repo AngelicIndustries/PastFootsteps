@@ -12,10 +12,12 @@ public final class Config {
     public static Configuration configuration;
     public static File directory;
     public static boolean surfaceSounds = true;
+    public static boolean swimming = true;
     public static boolean enabled = true, otherPlayers = true, mobs = true, foliage = true, wet = true;
     public static boolean jumpLand = true, wander = true, stationary = true, debug = false, debugContacts = false;
     public static float volume = 1, foliageVolume = 1, wetVolume = 1, remoteVolume = 0.7f;
     public static float passiveVolume = 0.7f, hostileVolume = 0.7f;
+    public static float swimmingVolume = 1;
     public static float stride = 1.2f, ladderStride = 0.65f;
     public static int range = 24, maxEntities = 64, maxSoundsPerTick = 32;
 
@@ -68,6 +70,7 @@ public final class Config {
         volume = number("volume", "master", 1, 0, 2, "Overall footstep volume multiplier.");
         foliageVolume = number("volume", "foliage", 1, 0, 2, "Grass, crops and other foliage volume multiplier.");
         wetVolume = number("volume", "wet", 1, 0, 2, "Shallow-water layer volume multiplier.");
+        swimmingVolume = number("volume", "swimming", 1, 0, 2, "Water and lava swimming volume multiplier.");
         remoteVolume = number("volume", "otherPlayers", 0.7f, 0, 2, "Additional volume multiplier for other players.");
         passiveVolume = number(
             "volume",
@@ -85,6 +88,11 @@ public final class Config {
             "Additional volume multiplier for supported hostile mobs.");
         foliage = bool("effects", "foliage", true, "Rustle vegetation when moving through it.");
         wet = bool("effects", "wet", true, "Layer wet footsteps in shallow water. Exposed rain has its own settings.");
+        swimming = bool(
+            "effects",
+            "swimming",
+            true,
+            "Replace swimming audio in deep water and lava. Disable to retain vanilla or Dynamic Surroundings swimming sounds. Shallow-water footsteps still use the surface and wet settings.");
         jumpLand = bool("effects", "jumpAndLand", true, "Play takeoff and landing sounds.");
         wander = bool("effects", "shuffle", true, "Play a short shuffle when stopping or turning abruptly.");
         stationary = bool(

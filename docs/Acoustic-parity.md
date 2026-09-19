@@ -6,6 +6,21 @@ node; `empty`, `silent`, and JSON `null` can deliberately mute a resolved event 
 That distinction lets the client suppress a channel it owns while still retaining native fallback for absent or invalid
 acoustics.
 
+Swimming selects `swim_water` or `swim_lava` and their `swim` event. Both bundled definitions use Minecraft's swim
+recordings, with a lower pitch for lava. The shared contact engine supplies stroke timing and smoothed three-dimensional
+speed; simultaneous foot contacts produce one stroke. Deep swimming skips ordinary ground/wet layers but can retain
+foliage rustles. Shallow supported wading keeps the existing material and wet-layer behavior.
+
+An acoustic context can select a position along volume and pitch ranges instead of choosing randomly. Swimming uses
+`clamp(speed * 0.35, 0, 1)` for volume, with remote strokes additionally scaled by `0.125`, following MIT PF. Range
+endpoint order is preserved, including descending ranges. Context scaling and delayed playback retain these controls.
+Other playback keeps random range sampling unless its caller requests interpolation.
+
+The audited 1.7.10 Dynamic Surroundings footstep engine already supplies player swimming through `_SWIM`, using
+`game.player.swim`. PF's existing `Footsteps.process` compatibility hook replaces that path while PF owns swimming;
+disabling PF swimming or removing its acoustic definition leaves that path available. Separate DS underwater ambience
+and water-entry splash sounds are not suppressed. An explicitly empty acoustic still means intentional silence.
+
 Material maps continue to use 1.7 block registry names and metadata. The reader also accepts vanilla block keys without
 the `minecraft:` prefix and modern PF primitive spellings such as `minecraft:block.stone.step`. Modern block-state/tag
 selectors cannot be translated reliably to 1.7 metadata and are not supported.
