@@ -137,3 +137,16 @@ Synchronized hop interpolation keeps airborne-to-ground transitions airborne unt
 sample's position is reached. This prevents material landing contacts from being emitted above the
 block and discarded by the bounded surface resolver. Departure likewise becomes airborne as soon
 as the interpolated position leaves a grounded sample.
+
+## Wildcards and material groups
+
+The audited MIT StateLookup supports a global `*`, block-state predicates and modern registry tags. PF now
+supports the global wildcard with its 1.7 metadata/substrate spellings, plus registry-name `*` patterns as a
+Forge adapter extension. `#ore:<name>` provides group membership from Forge's Ore Dictionary instead of modern
+tags. Existing `#` comment keys remain inert. State predicates still require metadata conversion; this does
+not implement derived/appearance material lookup.
+
+PF preserves its established merged-key precedence rather than copying modern lookup quirks: exact entries
+precede groups, groups precede patterns, and entity maps precede the shared map. Metadata constraints win
+within a class; patterns then rank by literal specificity, with later declarations breaking ties. Rules and
+Ore Dictionary metadata membership compile at reload and cache results within a bounded snapshot-local cache.

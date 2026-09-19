@@ -84,6 +84,12 @@ legacy IDs Giant and LavaSlime with the existing shared contact tracker.
 Profile volume/stride tuning and 1.7 nominal widths are adapter data;
 no additional sound assets or specialized hopping generator were copied.
 
+Wildcard/group lookup follows the purpose of MIT StateLookup's global
+wildcard and registry tags. Registry-name star patterns and #ore: selectors
+are Forge-specific extensions, using 1.7 metadata and Ore Dictionary
+membership. Existing PF exact-key and entity-map priority remain intact;
+modern block-state predicates and tag names still require conversion.
+
 The 455 OGG files imported from that namespace are byte-identical MIT-source
 assets and are all mono. Its imported sound event categories were changed
 from "master" to the existing 1.7.10 "player" category. Local aliases cover

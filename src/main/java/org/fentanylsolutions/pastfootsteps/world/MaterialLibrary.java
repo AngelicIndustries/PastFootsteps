@@ -41,6 +41,15 @@ public final class MaterialLibrary {
 
     private volatile Snapshot snapshot = Snapshot.EMPTY;
     private final LocalJsonOverrides local = new LocalJsonOverrides();
+    private final BlockMaterialMap.Groups oreGroups;
+
+    public MaterialLibrary() {
+        this(BlockMaterialMap.ORE_DICTIONARY);
+    }
+
+    MaterialLibrary(BlockMaterialMap.Groups oreGroups) {
+        this.oreGroups = oreGroups;
+    }
 
     /**
      * Builds a complete replacement snapshot. Resources are returned from lowest to highest priority,
@@ -87,7 +96,7 @@ public final class MaterialLibrary {
             actorBlocks.put(id, entries);
         }
         if (directory != null) local.dropMissingUnder(new File(directory, "profiles/materials"));
-        snapshot = new Snapshot(blocks, primitives, biomes, actorBlocks);
+        snapshot = new Snapshot(blocks, primitives, biomes, actorBlocks, oreGroups);
     }
 
     /**
@@ -107,9 +116,9 @@ public final class MaterialLibrary {
         Snapshot current = snapshot;
         String name = ((String) registeredName).toLowerCase(Locale.ROOT);
         String suffix = normalizeSubstrate(substrate);
-        Map<String, String> actorMap = current.actorBlocks.get(materialMap);
-        String result = actorMap == null ? null : explicit(actorMap, name, meta, suffix);
-        if (result == null) result = explicit(current.blocks, name, meta, suffix);
+        BlockMaterialMap actorMap = current.actorBlocks.get(materialMap);
+        String result = actorMap == null ? null : actorMap.lookup(name, meta, suffix);
+        if (result == null) result = current.blocks.lookup(name, meta, suffix);
         if (result != null && !"UNASSIGNED".equals(result)) return result;
 
         if (!suffix.isEmpty() && !"bigger".equals(suffix)) return null;
@@ -125,18 +134,6 @@ public final class MaterialLibrary {
     public float biomePitch(BiomeGenBase biome) {
         BiomeVariance variance = biomeVariance(snapshot.biomes, biome);
         return variance == null ? 1.0F : variance.pitch;
-    }
-
-    private static String explicit(Map<String, String> map, String name, int meta, String suffix) {
-        String ending = suffix.isEmpty() ? "" : "." + suffix;
-        String value = map.get(name + "^" + (meta & 15) + ending);
-        if (value != null) return value;
-        value = map.get(name + ending);
-        if (value != null || !name.startsWith("minecraft:")) return value;
-        // Older PF maps commonly omit minecraft: for vanilla blocks.
-        String path = name.substring(name.indexOf(':') + 1);
-        value = map.get(path + "^" + (meta & 15) + ending);
-        return value != null ? value : map.get(path + ending);
     }
 
     private static String primitive(Map<String, String> map, Block block) {
@@ -207,7 +204,7 @@ public final class MaterialLibrary {
             try (Reader reader = new InputStreamReader(resource.getInputStream(), StandardCharsets.UTF_8)) {
                 JsonObject root = GSON.fromJson(reader, JsonObject.class);
                 if (root == null) throw new JsonParseException("expected a JSON object");
-                destination.putAll(stringLayer(root));
+                merge(destination, stringLayer(root, !location.equals(PRIMITIVE_MAP)));
                 loaded = true;
             } catch (Exception e) {
                 PastFootsteps.LOG.warn("Skipping invalid material map layer {} ({})", location, resource, e);
@@ -231,9 +228,11 @@ public final class MaterialLibrary {
 
     private boolean loadLocalStrings(File directory, String path, String description, Map<String, String> destination) {
         if (directory == null) return false;
-        Map<String, String> layer = local
-            .load(new File(directory, path), description, value -> stringLayer(object(value)));
-        if (layer != null) destination.putAll(layer);
+        Map<String, String> layer = local.load(
+            new File(directory, path),
+            description,
+            value -> stringLayer(object(value), !path.endsWith("primitivemap.json")));
+        if (layer != null) merge(destination, layer);
         return layer != null;
     }
 
@@ -249,7 +248,15 @@ public final class MaterialLibrary {
         return value.getAsJsonObject();
     }
 
-    private static Map<String, String> stringLayer(JsonObject root) {
+    private static void merge(Map<String, String> destination, Map<String, String> layer) {
+        // A rewritten selector is a later declaration even when its key already existed below it.
+        for (Map.Entry<String, String> entry : layer.entrySet()) {
+            destination.remove(entry.getKey());
+            destination.put(entry.getKey(), entry.getValue());
+        }
+    }
+
+    private static Map<String, String> stringLayer(JsonObject root, boolean blockSelectors) {
         Map<String, String> layer = new LinkedHashMap<String, String>();
         for (Map.Entry<String, JsonElement> entry : root.entrySet()) {
             if (!entry.getValue()
@@ -259,10 +266,13 @@ public final class MaterialLibrary {
                     .isString()) {
                 throw new JsonParseException("entry '" + entry.getKey() + "' must be a string");
             }
+            String key = entry.getKey()
+                .replace('>', ':')
+                .toLowerCase(Locale.ROOT);
+            if (blockSelectors) BlockMaterialMap.validateKey(key);
+            layer.remove(key);
             layer.put(
-                entry.getKey()
-                    .replace('>', ':')
-                    .toLowerCase(Locale.ROOT),
+                key,
                 materialValue(
                     entry.getValue()
                         .getAsString()));
@@ -341,20 +351,21 @@ public final class MaterialLibrary {
             Collections.<String, String>emptyMap(),
             Collections.<String, String>emptyMap(),
             Collections.<String, BiomeVariance>emptyMap(),
-            Collections.<String, Map<String, String>>emptyMap());
-        final Map<String, String> blocks;
+            Collections.<String, Map<String, String>>emptyMap(),
+            BlockMaterialMap.ORE_DICTIONARY);
+        final BlockMaterialMap blocks;
         final Map<String, String> primitives;
         final Map<String, BiomeVariance> biomes;
-        final Map<String, Map<String, String>> actorBlocks;
+        final Map<String, BlockMaterialMap> actorBlocks;
 
         Snapshot(Map<String, String> blocks, Map<String, String> primitives, Map<String, BiomeVariance> biomes,
-            Map<String, Map<String, String>> actorBlocks) {
-            this.blocks = Collections.unmodifiableMap(new LinkedHashMap<String, String>(blocks));
+            Map<String, Map<String, String>> actorBlocks, BlockMaterialMap.Groups oreGroups) {
+            this.blocks = new BlockMaterialMap(blocks, oreGroups);
             this.primitives = Collections.unmodifiableMap(new LinkedHashMap<String, String>(primitives));
             this.biomes = Collections.unmodifiableMap(new LinkedHashMap<String, BiomeVariance>(biomes));
-            Map<String, Map<String, String>> maps = new LinkedHashMap<>();
+            Map<String, BlockMaterialMap> maps = new LinkedHashMap<>();
             for (Map.Entry<String, Map<String, String>> entry : actorBlocks.entrySet())
-                maps.put(entry.getKey(), Collections.unmodifiableMap(new LinkedHashMap<>(entry.getValue())));
+                maps.put(entry.getKey(), new BlockMaterialMap(entry.getValue(), oreGroups));
             this.actorBlocks = Collections.unmodifiableMap(maps);
         }
     }

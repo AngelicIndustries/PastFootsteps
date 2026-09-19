@@ -25,8 +25,12 @@ import net.minecraft.block.material.Material;
 import net.minecraft.client.resources.IResource;
 import net.minecraft.client.resources.IResourceManager;
 import net.minecraft.client.resources.data.IMetadataSection;
+import net.minecraft.item.Item;
+import net.minecraft.item.ItemBlock;
+import net.minecraft.item.ItemStack;
 import net.minecraft.util.ResourceLocation;
 import net.minecraft.world.biome.BiomeGenBase;
+import net.minecraftforge.oredict.OreDictionary;
 
 import org.junit.Rule;
 import org.junit.Test;
@@ -209,6 +213,178 @@ public class MaterialLibraryTest {
         assertEquals("pack", library.lookup(STONE, 0, "", "hooves"));
         library.reload(resources, temporary.getRoot(), Collections.<String>emptySet());
         assertEquals("shared", library.lookup(STONE, 0, "", "hooves"));
+    }
+
+    @Test
+    public void wildcardFamiliesKeepExactMetadataAndSubstratePrecedence() {
+        Resources resources = new Resources();
+        resources.add(
+            "config/blockmap.json",
+            "{\"*\":\"global\",\"test:*\":\"namespace\"," + "\"test:*stone\":\"family\",\"test:cobble*^1\":\"variant\","
+                + "\"test:stone\":\"exact\",\"*.wet\":\"splash\",\"test:stone.wet\":\"mudfine\"}");
+        MaterialLibrary library = load(resources);
+        assertEquals("exact", library.lookup(STONE, 0, ""));
+        assertEquals("exact", library.lookup(STONE, 1, ""));
+        assertEquals("family", library.lookup(COBBLESTONE, 0, ""));
+        assertEquals("variant", library.lookup(COBBLESTONE, 1, ""));
+        assertEquals("splash", library.lookup(COBBLESTONE, 0, "wet"));
+        assertEquals("mudfine", library.lookup(STONE, 0, "wet"));
+        assertNull(library.lookup(COBBLESTONE, 0, "foliage"));
+    }
+
+    @Test
+    public void vanillaWildcardAliasesAndReloadedMissesStaySeparate() {
+        Block vanilla = register(253, "minecraft:test_selector_block", new TestBlock());
+        Resources resources = new Resources();
+        resources.add("config/blockmap.json", "{\"test_selector_*\":\"vanilla-only\"}");
+        MaterialLibrary library = load(resources);
+        assertEquals("vanilla-only", library.lookup(vanilla, 0, ""));
+        assertNull(library.lookup(STONE, 0, ""));
+        resources.add("config/blockmap.json", "{\"test:*\":\"now-present\"}");
+        library.reload(resources);
+        assertEquals("now-present", library.lookup(STONE, 0, ""));
+    }
+
+    @Test
+    public void equalWildcardRulesUseLatestDeclarationAcrossLayers() {
+        Resources resources = new Resources();
+        resources.add("config/blockmap.json", "{\"test:*stone\":\"first\",\"test:stone*\":\"second\"}");
+        assertEquals("second", load(resources).lookup(STONE, 0, ""));
+        resources.add("config/blockmap.json", "{\"test:*stone\":\"rewritten\"}");
+        assertEquals("rewritten", load(resources).lookup(STONE, 0, ""));
+    }
+
+    @Test
+    public void actorWildcardCanOverrideSharedExactAndUnassignedStillFallsThrough() {
+        Resources resources = new Resources();
+        resources.add("config/blockmap.json", "{\"test:stone\":\"shared\",\"*.wet\":\"splash\"}");
+        resources.add("config/materials/hooves.json", "{\"test:*\":\"NOT_EMITTER\",\"test:*^1\":\"UNASSIGNED\"}");
+        resources.add("config/primitivemap.json", "{\"stone\":\"primitive\"}");
+        MaterialLibrary library = new MaterialLibrary();
+        library.reload(resources, null, Collections.singleton("hooves"));
+        assertEquals("NOT_EMITTER", library.lookup(STONE, 0, "", "hooves"));
+        assertEquals("primitive", library.lookup(STONE, 1, "", "hooves"));
+        assertEquals("splash", library.lookup(STONE, 1, "wet", "hooves"));
+        assertEquals("shared", library.lookup(STONE, 0, ""));
+    }
+
+    @Test
+    public void invalidWildcardLocalEditRetainsLastValidSelectorLayer() throws Exception {
+        Resources resources = new Resources();
+        resources.add("config/blockmap.json", "{\"*\":\"pack\"}");
+        File profiles = temporary.newFolder("profiles");
+        File file = new File(profiles, "blockmap.json");
+        Files.write(file.toPath(), "{\"test:*\":\"local\"}".getBytes(StandardCharsets.UTF_8));
+        MaterialLibrary library = new MaterialLibrary();
+        library.reload(resources, temporary.getRoot());
+        for (String key : new String[] { "test:*^16", "test:*^oops", "test:*[state=true]", "#ore:" }) {
+            Files.write(file.toPath(), ("{\"" + key + "\":\"broken\"}").getBytes(StandardCharsets.UTF_8));
+            library.reload(resources, temporary.getRoot());
+            assertEquals(key, "local", library.lookup(STONE, 0, ""));
+        }
+        assertTrue(file.delete());
+        library.reload(resources, temporary.getRoot());
+        assertEquals("pack", library.lookup(STONE, 0, ""));
+    }
+
+    @Test
+    public void oreGroupsRespectMembershipMetadataAndExactExceptions() {
+        String group = "pfTestStoneFamily";
+        TestGroups groups = new TestGroups();
+        groups.add(group, new ItemStack(new ItemBlock(STONE), 1, OreDictionary.WILDCARD_VALUE));
+        groups.add(group, new ItemStack(new ItemBlock(COBBLESTONE), 1, 2));
+        Resources resources = new Resources();
+        resources.add(
+            "config/blockmap.json",
+            "{\"*\":\"wild\",\"#ore:pfTestStoneFamily\":\"group\","
+                + "\"#ore:pfTestStoneFamily^1\":\"group-meta\",\"#ore:pfTestStoneFamily.wet\":\"splash\","
+                + "\"test:stone^3\":\"exception\",\"#minecraft:stone\":\"legacy-comment\"}");
+        MaterialLibrary library = new MaterialLibrary(groups);
+        library.reload(resources);
+        assertEquals("group", library.lookup(STONE, 0, ""));
+        assertEquals("group-meta", library.lookup(STONE, 1, ""));
+        assertEquals("exception", library.lookup(STONE, 3, ""));
+        assertEquals("group", library.lookup(COBBLESTONE, 2, ""));
+        assertEquals("wild", library.lookup(COBBLESTONE, 1, ""));
+        assertEquals("splash", library.lookup(COBBLESTONE, 2, "wet"));
+        assertNull(library.lookup(COBBLESTONE, 0, "wet"));
+    }
+
+    @Test
+    public void oreMembershipIsASnapshotAndMissingGroupsDoNotMutateDictionary() {
+        String group = "pfTestLateStoneFamily";
+        Resources resources = new Resources();
+        resources.add("config/blockmap.json", "{\"#ore:" + group + "\":\"group\"}");
+        TestGroups groups = new TestGroups();
+        Set<String> before = new HashSet<>(Arrays.asList(groups.names()));
+        MaterialLibrary library = new MaterialLibrary(groups);
+        library.reload(resources);
+        assertEquals(before, new HashSet<>(Arrays.asList(groups.names())));
+        assertNull(library.lookup(STONE, 0, ""));
+        groups.add(group, new ItemStack(new ItemBlock(STONE), 1, OreDictionary.WILDCARD_VALUE));
+        assertNull(library.lookup(STONE, 0, ""));
+        library.reload(resources);
+        assertEquals("group", library.lookup(STONE, 0, ""));
+    }
+
+    @Test
+    public void namespaceAndMultipleStarsMatchWithoutSwallowingOtherSubstrates() {
+        Resources resources = new Resources();
+        resources.add(
+            "config/blockmap.json",
+            "{\"*:cob*sto*\":\"pattern\",\"test:stone.custom\":\"legacy\","
+                + "\"test:stone^1\":\"meta\",\"*\":\"normal-only\"}");
+        MaterialLibrary library = load(resources);
+        assertEquals("pattern", library.lookup(COBBLESTONE, 0, ""));
+        assertEquals("normal-only", library.lookup(STONE, 0, ""));
+        assertEquals("legacy", library.lookup(STONE, 0, "custom"));
+        assertNull(library.lookup(COBBLESTONE, 0, "custom"));
+        assertEquals("meta", library.lookup(STONE, 17, ""));
+    }
+
+    @Test
+    public void groupConflictsPreferMetadataThenLaterDeclarationAndIgnoreNonBlocks() {
+        TestGroups groups = new TestGroups();
+        groups.add("pfAlpha", new ItemStack(new ItemBlock(STONE), 1, OreDictionary.WILDCARD_VALUE));
+        groups.add("pfBeta", new ItemStack(new ItemBlock(STONE), 1, OreDictionary.WILDCARD_VALUE));
+        groups.add("pfBeta", new ItemStack(new Item(), 1, 0));
+        groups.add("pfBeta", null);
+        Resources resources = new Resources();
+        resources.add(
+            "config/blockmap.json",
+            "{\"#ore:pfAlpha^1\":\"meta\"," + "\"#ore:pfAlpha\":\"alpha\",\"#ore:pfBeta\":\"beta\"}");
+        MaterialLibrary library = new MaterialLibrary(groups);
+        library.reload(resources);
+        assertEquals("beta", library.lookup(STONE, 0, ""));
+        assertEquals("meta", library.lookup(STONE, 1, ""));
+        assertNull(library.lookup(COBBLESTONE, 0, ""));
+        resources.add("config/blockmap.json", "{\"#ore:pfAlpha\":\"rewritten\"}");
+        library.reload(resources);
+        assertEquals("rewritten", library.lookup(STONE, 0, ""));
+        resources.add("config/blockmap.json", "{\"test:stone\":\"exact\"}");
+        library.reload(resources);
+        assertEquals("exact", library.lookup(STONE, 1, ""));
+    }
+
+    private static final class TestGroups implements BlockMaterialMap.Groups {
+
+        private final Map<String, List<ItemStack>> entries = new HashMap<>();
+
+        void add(String name, ItemStack stack) {
+            entries.computeIfAbsent(name, ignored -> new ArrayList<>())
+                .add(stack);
+        }
+
+        @Override
+        public String[] names() {
+            return entries.keySet()
+                .toArray(new String[0]);
+        }
+
+        @Override
+        public List<ItemStack> entries(String name) {
+            return entries.getOrDefault(name, Collections.emptyList());
+        }
     }
 
     private static Block register(int id, String name, Block block) {

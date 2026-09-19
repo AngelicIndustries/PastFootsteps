@@ -1,7 +1,7 @@
 # Resource packs
 
 PastFootsteps reads its material data from the `presencefootsteps` namespace for the sound assets and JSON mappings described below. Modern block-state/tag selectors and legacy
-LiteLoader CFG packs need conversion to 1.7 block names and metadata. Files from all enabled packs are merged in pack order; entries from higher packs
+LiteLoader CFG packs need conversion to 1.7 block names, metadata and Ore Dictionary groups. Files from all enabled packs are merged in pack order; entries from higher packs
 replace entries with the same key. If one layer is malformed, that layer is skipped and valid lower layers remain.
 
 ## Block mappings
@@ -30,6 +30,53 @@ as `foliage` or `wet`, it returns no association; the resolver may still use its
 `NOT_EMITTER` is an explicit non-emitter and does not fall back to a primitive acoustic. On the `carpet` substrate,
 non-emitting overlays still allow the underlying surface to be considered. `VANILLA` requests native step playback
 for a normal surface rather than a PF acoustic. `MESSY_GROUND` on the `.messy` substrate enables the foliage entry strategy described below.
+
+## Wildcard and group mappings
+
+The shared block map and per-entity maps also accept `*` patterns and Forge Ore Dictionary groups:
+
+```json
+{
+  "*": "stone",
+  "example:*_planks": "wood",
+  "example:*_planks^2": "squeakywood",
+  "#ore:plankWood": "wood",
+  "#ore:treeLeaves.foliage": "brush",
+  "example:special_planks": "hardmetal"
+}
+```
+
+`*` matches zero or more characters. A bare `*` matches every registered block; other patterns without a
+namespace are limited to `minecraft:`. For example, `*_stairs` means `minecraft:*_stairs`. Namespaced patterns
+can match the namespace too, such as `*:polished_*`. Only `*` is a wildcard; regex, `?` and modern block-state
+predicates are not supported. `^0` through `^15` and the usual substrate suffixes work with either kind of selector.
+A rule for the normal surface does not also match `.wet`, `.foliage`, or other substrates.
+
+`#ore:<name>` matches blocks whose item form belongs to that Forge Ore Dictionary category. Selector names are
+case-insensitive, so `#ore:plankWood` and `#ore:plankwood` are equivalent. An entry registered for a specific
+metadata value matches only that value; an Ore Dictionary wildcard registration matches all 16 values.
+An optional `^meta` further restricts the group. Non-block items are ignored. Group membership is captured on
+reload, so use `/pf reload` after late registrations. Missing groups match nothing and are not created in the
+Ore Dictionary. Other `#` keys remain inert, preserving legacy commented entries such as `#minecraft:slime`.
+Modern tag names therefore need conversion to an available Ore Dictionary group; they are not automatic aliases.
+
+Within each map and substrate, rules are checked in this order:
+
+1. Exact block entries, metadata-specific before generic, retaining the existing vanilla namespace aliases.
+2. Ore Dictionary groups, metadata-specific before generic.
+3. Registry patterns, metadata-specific first, then patterns with more literal characters.
+
+Equally ranked group or pattern rules use the last declaration. Replacing the same key in a higher resource pack
+or local file makes it the later declaration. Specific rules remain more important than broad rules, even across
+pack layers. An entity-specific map is searched before the shared map, so its wildcard can override a shared
+exact entry. `UNASSIGNED`, `NOT_EMITTER`, `VANILLA` and composites retain their existing behavior; an explicit
+`UNASSIGNED` does not continue through less-specific group or wildcard rules.
+
+Rules and group membership compile on reload; lookups use a bounded cache that is replaced with the definitions.
+Malformed active selectors reject their entire layer. Invalid local edits retain the last valid local layer,
+and deleting the local file restores the pack definitions. These selectors add no CFG options and change no
+bundled material mappings by default. MIT PF's global wildcard and tag grouping motivate this adapter;
+registry-name patterns and Ore Dictionary syntax are PF's Forge-specific extensions.
 
 ## Per-entity material maps
 
