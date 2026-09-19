@@ -18,6 +18,8 @@ public final class Config {
     public static float volume = 1, foliageVolume = 1, wetVolume = 1, remoteVolume = 0.7f;
     public static float passiveVolume = 0.7f, hostileVolume = 0.7f;
     public static float swimmingVolume = 1;
+    public static float ownVolume = 1, runningBoost = 0;
+    public static boolean sizePitch = true;
     public static float stride = 1.2f, ladderStride = 0.65f;
     public static int range = 24, maxEntities = 64, maxSoundsPerTick = 32;
 
@@ -68,6 +70,20 @@ public final class Config {
             128,
             "Maximum enhanced sound samples started per client tick. Additional samples are skipped in crowds.");
         volume = number("volume", "master", 1, 0, 2, "Overall footstep volume multiplier.");
+        ownVolume = number(
+            "volume",
+            "ownPlayer",
+            1,
+            0,
+            2,
+            "Additional volume multiplier for your own movement sounds.");
+        runningBoost = number(
+            "volume",
+            "runningBoost",
+            0,
+            -1,
+            1,
+            "Movement-sensitive volume adjustment. Zero keeps constant volume. Positive values reserve headroom by softening walking: 0.5 makes running up to 50 percent louder than walking, 1 makes it twice as loud in gain. Running retains the configured volume. Negative values soften running instead: -0.5 halves its gain. Applies smoothly to all PF movement layers, including vertical movement.");
         foliageVolume = number("volume", "foliage", 1, 0, 2, "Grass, crops and other foliage volume multiplier.");
         wetVolume = number("volume", "wet", 1, 0, 2, "Shallow-water layer volume multiplier.");
         swimmingVolume = number("volume", "swimming", 1, 0, 2, "Water and lava swimming volume multiplier.");
@@ -100,6 +116,11 @@ public final class Config {
             "stationary",
             true,
             "Allow materials such as creaky wood to make occasional standing sounds.");
+        sizePitch = bool(
+            "effects",
+            "sizePitch",
+            true,
+            "Adjust movement sound pitch to entity size using the profile's referenceWidth. Smaller entities, including babies, sound higher. Profiles without a reference width keep normal pitch.");
         stride = number(
             "movement",
             "stride",

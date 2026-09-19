@@ -323,7 +323,8 @@ public final class ProfileLibrary implements IResourceManagerReloadListener {
                 "strideMultiplier",
                 "childScale",
                 "runSpeed",
-                "volume");
+                "volume",
+                "referenceWidth");
             if (!bool(value, "enabled", true, label)) {
                 candidate.put(id, EntitySpec.disabled(id));
                 continue;
@@ -337,6 +338,7 @@ public final class ProfileLibrary implements IResourceManagerReloadListener {
             Double childScale = optionalNumber(value, "childScale", 0.1, 2.0, path);
             Double runSpeed = optionalNumber(value, "runSpeed", Double.MIN_VALUE, 4.0, path);
             Double volume = optionalNumber(value, "volume", 0.0, 4.0, path);
+            Double referenceWidth = optionalNumber(value, "referenceWidth", 0.0, 64.0, path);
             if (parent == null && gaitId == null)
                 throw new JsonParseException(path + ".gait is required without parent");
             candidate.put(
@@ -350,7 +352,8 @@ public final class ProfileLibrary implements IResourceManagerReloadListener {
                     strideMultiplier,
                     childScale,
                     runSpeed,
-                    volume));
+                    volume,
+                    referenceWidth));
         }
         // Resolve the whole merged graph before committing this layer so a bad parent cannot partially apply.
         compileProfiles(candidate, gaits, label, Collections.<String>emptyList(), false);
@@ -434,6 +437,8 @@ public final class ProfileLibrary implements IResourceManagerReloadListener {
             : parent == null ? 0.5 : parent.childScale;
         double runSpeed = spec.runSpeed != null ? spec.runSpeed.doubleValue() : parent == null ? 0.22 : parent.runSpeed;
         float volume = spec.volume != null ? spec.volume.floatValue() : parent == null ? 1.0F : parent.volume;
+        double referenceWidth = spec.referenceWidth != null ? spec.referenceWidth.doubleValue()
+            : parent == null ? 0.0 : parent.referenceWidth;
 
         Class<? extends EntityLivingBase> entityClass = resolveClass(spec.selector.className);
         if (reportDormantClasses && spec.selector.className != null
@@ -459,7 +464,8 @@ public final class ProfileLibrary implements IResourceManagerReloadListener {
             stride,
             childScale,
             runSpeed,
-            volume);
+            volume,
+            referenceWidth);
         visiting.remove(id);
         result.put(id, resolved);
         return resolved;
@@ -706,14 +712,27 @@ public final class ProfileLibrary implements IResourceManagerReloadListener {
         final Double childScale;
         final Double runSpeed;
         final Double volume;
+        final Double referenceWidth;
 
         EntitySpec(String id, String parentId, SelectorSpec selector, int priority, String gaitId,
-            Double strideMultiplier, Double childScale, Double runSpeed, Double volume) {
-            this(id, false, parentId, selector, priority, gaitId, strideMultiplier, childScale, runSpeed, volume);
+            Double strideMultiplier, Double childScale, Double runSpeed, Double volume, Double referenceWidth) {
+            this(
+                id,
+                false,
+                parentId,
+                selector,
+                priority,
+                gaitId,
+                strideMultiplier,
+                childScale,
+                runSpeed,
+                volume,
+                referenceWidth);
         }
 
         private EntitySpec(String id, boolean disabled, String parentId, SelectorSpec selector, int priority,
-            String gaitId, Double strideMultiplier, Double childScale, Double runSpeed, Double volume) {
+            String gaitId, Double strideMultiplier, Double childScale, Double runSpeed, Double volume,
+            Double referenceWidth) {
             this.id = id;
             this.disabled = disabled;
             this.parentId = parentId;
@@ -724,10 +743,11 @@ public final class ProfileLibrary implements IResourceManagerReloadListener {
             this.childScale = childScale;
             this.runSpeed = runSpeed;
             this.volume = volume;
+            this.referenceWidth = referenceWidth;
         }
 
         static EntitySpec disabled(String id) {
-            return new EntitySpec(id, true, null, SelectorSpec.exact(id), 0, null, null, null, null, null);
+            return new EntitySpec(id, true, null, SelectorSpec.exact(id), 0, null, null, null, null, null, null);
         }
     }
 

@@ -27,7 +27,8 @@
         "strideMultiplier": { "type": "number", "minimum": 0.1, "maximum": 8 },
         "childScale": { "type": "number", "minimum": 0.1, "maximum": 2 },
         "runSpeed": { "type": "number", "exclusiveMinimum": 0, "maximum": 4 },
-        "volume": { "type": "number", "minimum": 0, "maximum": 4 }
+        "volume": { "type": "number", "minimum": 0, "maximum": 4 },
+        "referenceWidth": { "type": "number", "minimum": 0, "maximum": 64 }
       },
       "anyOf": [
         { "required": ["gait"] },

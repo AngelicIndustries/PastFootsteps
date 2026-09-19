@@ -16,14 +16,36 @@ public final class EntityProfile {
     public final double childScale;
     public final double runSpeed;
     public final float volume;
+    /** Adult nominal bounding-box width in blocks; zero leaves size pitch correction unspecified. */
+    public final double referenceWidth;
 
     public EntityProfile(String id, GaitDefinition gait, double strideMultiplier, double childScale, double runSpeed,
         float volume) {
-        this(id, null, EntitySelector.exact(id), 0, gait, strideMultiplier, childScale, runSpeed, volume);
+        this(id, gait, strideMultiplier, childScale, runSpeed, volume, 0);
+    }
+
+    public EntityProfile(String id, GaitDefinition gait, double strideMultiplier, double childScale, double runSpeed,
+        float volume, double referenceWidth) {
+        this(
+            id,
+            null,
+            EntitySelector.exact(id),
+            0,
+            gait,
+            strideMultiplier,
+            childScale,
+            runSpeed,
+            volume,
+            referenceWidth);
     }
 
     EntityProfile(String id, String parentId, EntitySelector selector, int priority, GaitDefinition gait,
         double strideMultiplier, double childScale, double runSpeed, float volume) {
+        this(id, parentId, selector, priority, gait, strideMultiplier, childScale, runSpeed, volume, 0);
+    }
+
+    EntityProfile(String id, String parentId, EntitySelector selector, int priority, GaitDefinition gait,
+        double strideMultiplier, double childScale, double runSpeed, float volume, double referenceWidth) {
         if (id == null || !ID.matcher(id)
             .matches()) throw new IllegalArgumentException("id must be a sane ID");
         if (parentId != null && !ID.matcher(parentId)
@@ -36,6 +58,7 @@ public final class EntityProfile {
         requireRange(childScale, 0.1, 2.0, "childScale");
         requireRange(runSpeed, Double.MIN_VALUE, 4.0, "runSpeed");
         requireRange(volume, 0.0, 4.0, "volume");
+        requireRange(referenceWidth, 0.0, 64.0, "referenceWidth");
         this.id = id;
         this.parentId = parentId;
         this.selector = selector;
@@ -45,6 +68,7 @@ public final class EntityProfile {
         this.childScale = childScale;
         this.runSpeed = runSpeed;
         this.volume = volume;
+        this.referenceWidth = referenceWidth;
     }
 
     private static void requireRange(double value, double minimum, double maximum, String field) {

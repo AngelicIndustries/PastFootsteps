@@ -150,6 +150,9 @@ entries with the same profile ID as a whole. Missing parents and inheritance cyc
 layer; an invalid local layer retains its cached last-valid version. An entry containing only `"enabled": false`
 removes that profile and creates an exact-ID opt-out for its key, so a broad class selector cannot claim that entity.
 `volume: 0` deliberately mutes a matched profile while retaining its contact tracking.
+Mapped modded creatures may set `referenceWidth` to opt into size-based audio pitch; leaving it unspecified keeps
+pitch neutral. The field describes adult nominal width and is separate from `childScale`, which only changes gait
+stride.
 
 When several selectors match a live entity, resolution is deterministic in this order: an exact `entityId` match,
 more selector constraints, the nearest matching class in the inheritance chain, higher `priority`, then the
@@ -166,6 +169,7 @@ exact-ID selector for a child or horse/skeleton variant that must override a bun
 | `childScale` | `0.5` | Further stride multiplier for child entities. Foot offsets already use actual entity width. |
 | `runSpeed` | `0.22` | Running threshold in blocks per client tick, with smoothing and hysteresis. Sprinting also selects running. |
 | `volume` | `1` | Multiplier applied with master and player/passive/hostile source volume. |
+| `referenceWidth` | `0` | Adult nominal bounding-box width in blocks for audio pitch correction; `0` leaves pitch neutral. Inherited by child profiles and independent of `childScale`. |
 | `enabled` | `true` | Whether the entry participates in resolution. |
 
 A gait defines named feet and their contact phase within one distance-based cycle. Positive lateral offset is

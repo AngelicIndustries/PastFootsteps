@@ -368,7 +368,7 @@ public class ProfileLibraryTest {
             "config/entities.json",
             "{\"schemaVersion\":1,\"entities\":{"
                 + "\"cow_base\":{\"gait\":\"biped\",\"strideMultiplier\":0.8,\"volume\":0.4},"
-                + "\"Cow\":{\"parent\":\"cow_base\",\"volume\":0.7}}}");
+                + "\"Cow\":{\"parent\":\"cow_base\",\"volume\":0.7,\"referenceWidth\":0.9}}}");
 
         EntityProfile cow = load(resources).resolve("Cow");
         assertNotNull(cow);
@@ -377,6 +377,43 @@ public class ProfileLibraryTest {
         assertEquals(0.8, cow.strideMultiplier, 0.0);
         assertEquals(0.7F, cow.volume, 0.0F);
         assertEquals(0.5, cow.childScale, 0.0);
+        assertEquals(0.9, cow.referenceWidth, 0.0);
+    }
+
+    @Test
+    public void referenceWidthIsInheritedAndCanBeOverridden() {
+        Resources resources = validDefaults();
+        resources.add(
+            "config/entities.json",
+            "{\"schemaVersion\":1,\"entities\":{" + "\"base\":{\"gait\":\"biped\",\"referenceWidth\":1.25},"
+                + "\"child\":{\"parent\":\"base\"},"
+                + "\"override\":{\"parent\":\"base\",\"referenceWidth\":0.4}}}");
+        ProfileLibrary library = load(resources);
+        assertEquals(1.25, library.resolve("child").referenceWidth, 0.0);
+        assertEquals(0.4, library.resolve("override").referenceWidth, 0.0);
+    }
+
+    @Test
+    public void invalidReferenceWidthLeavesLowerProfileAndOldConstructorIsNeutral() {
+        Resources resources = validDefaults();
+        resources.add(
+            "config/entities.json",
+            "{\"schemaVersion\":1,\"entities\":{\"Player\":{\"gait\":\"biped\",\"referenceWidth\":65}}}");
+        ProfileLibrary library = load(resources);
+        assertEquals(0.0, library.resolve("Player").referenceWidth, 0.0);
+        assertFalse(
+            library.diagnostics()
+                .isEmpty());
+        Contact left = new Contact("left", 0.5, 0.25, 0.0);
+        Contact right = new Contact("right", 1.0, -0.25, 0.0);
+        EntityProfile profile = new EntityProfile(
+            "legacy",
+            new GaitDefinition("legacy", new Contact[] { left, right }, new Contact[] { left, right }),
+            1.0,
+            0.5,
+            0.2,
+            1.0F);
+        assertEquals(0.0, profile.referenceWidth, 0.0);
     }
 
     @Test

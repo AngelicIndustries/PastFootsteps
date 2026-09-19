@@ -39,6 +39,22 @@ This adapts upstream's broader native-sound filter to PF's per-actor ownership a
 
 ## Materials and biome variance
 
+Movement playback combines master, source-class, profile and biome volume with an optional running adjustment.
+Own-player volume is independent of other players. The MIT PF running multiplier `1 + adjustment * progress` is normalized
+by `1 + max(0, adjustment)` to reserve headroom below Minecraft's gain ceiling. Positive adjustment softens walking
+and retains the configured running volume; negative adjustment softens running. Adjustment defaults to zero.
+The progress uses a squared-speed ramp, smoothed by 0.35 per tick. Unlike upstream's local post-friction velocity, PF measures support-relative tick displacement for all actors, so its ramp spans 1 to
+1.25 times each profile's `runSpeed`. Vertical movement participates; teleports and actor resets clear the envelope.
+
+Size pitch follows MIT PF's `1 / (1 + (scale - 1) * 0.6)`, with scale clamped to 0.01 through 200. Minecraft 1.7 has no
+entity-type default-dimensions API, so profiles provide adult `referenceWidth` and actual entity width supplies the
+scale. Bundled vanilla profiles include verified adult widths. A zero/unspecified reference leaves pitch unchanged.
+The existing child gait scaling is independent and retains its accepted behavior.
+
+Each PF sample carries its actor's player/neutral/hostile category through context scaling and delayed playback.
+A scoped SoundManager mixin uses it for initial playback, live slider changes and channel cleanup. Shared sound
+definitions, namespaced pack resources, sample variation, mono routing and non-PF playback keep their existing paths.
+
 Material maps continue to use 1.7 block registry names and metadata. The reader also accepts vanilla block keys without
 the `minecraft:` prefix and modern PF primitive spellings such as `minecraft:block.stone.step`. Modern block-state/tag
 selectors cannot be translated reliably to 1.7 metadata and are not supported.

@@ -23,6 +23,9 @@ Presence Footsteps sound packs. The imported mono assets use the separate
 "presencefootstepsmono" namespace.
 
 PastFootsteps adaptations: sound events use the 1.7.10 player category.
+PF-emitted samples override that resource default at playback using the
+source actor's player/neutral/hostile category, including mixer updates
+and cleanup. Shared registry entries and non-PF sounds are unchanged.
 The Forge movement, material and acoustic adapters implement the MIT-era
 PF substrate and acoustic models using Minecraft 1.7.10 APIs. Modern vanilla
 sound names without 1.7 equivalents are mapped to similar bundled sounds.
@@ -42,6 +45,15 @@ Takeoff/landing event selection, the standing-jump and hard-landing
 thresholds, and grouped material deduplication also follow this revision's
 TerrestrialStepSoundGenerator. Physical contact groups remain owned by
 PastFootsteps, with separate sound selection and scoped native fall fallback.
+
+Source-class volume, the running adjustment and relative-size pitch formula
+follow SoundEngine, MotionTracker and sound/player/ImmediateSoundPlayer at
+the same MIT revision. Running adjustment defaults to zero. Its squared-speed
+ramp is adapted to PF's shared displacement tracker and profile runSpeed,
+with smoothing for 1.7 remote interpolation. Positive adjustments reserve
+headroom by normalizing walking gain, preserving running contrast below
+Minecraft's volume ceiling. Profiles provide the nominal
+adult width missing from 1.7's entity-type API. Child gait timing is unchanged.
 
 The 455 OGG files imported from that namespace are byte-identical MIT-source
 assets and are all mono. Its imported sound event categories were changed

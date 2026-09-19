@@ -13,7 +13,6 @@ import java.util.Set;
 
 import net.minecraft.block.material.Material;
 import net.minecraft.client.Minecraft;
-import net.minecraft.client.audio.PositionedSoundRecord;
 import net.minecraft.client.resources.IResource;
 import net.minecraft.client.resources.IResourceManager;
 import net.minecraft.client.resources.IResourceManagerReloadListener;
@@ -43,10 +42,12 @@ import org.fentanylsolutions.pastfootsteps.network.RemoteMotion;
 import org.fentanylsolutions.pastfootsteps.profile.EntityProfile;
 import org.fentanylsolutions.pastfootsteps.profile.ProfileLibrary;
 import org.fentanylsolutions.pastfootsteps.sound.AcousticContext;
+import org.fentanylsolutions.pastfootsteps.sound.ActorSound;
 import org.fentanylsolutions.pastfootsteps.sound.ImpactSounds;
 import org.fentanylsolutions.pastfootsteps.sound.LandingSoundGate;
 import org.fentanylsolutions.pastfootsteps.sound.SoundEngine;
 import org.fentanylsolutions.pastfootsteps.sound.SoundNames;
+import org.fentanylsolutions.pastfootsteps.sound.SourceSoundScale;
 import org.fentanylsolutions.pastfootsteps.sound.SwimmingSounds;
 import org.fentanylsolutions.pastfootsteps.world.MaterialLibrary;
 import org.fentanylsolutions.pastfootsteps.world.SurfaceResolver;
@@ -251,6 +252,12 @@ public final class FootstepController implements IResourceManagerReloadListener 
             entry.addProperty("material", state.lastMaterial);
             entry.addProperty("liquidMode", state.liquidMode.name());
             entry.addProperty("surfaceAudioOwned", shouldReplace(state.actor));
+            entry.addProperty("movementVolumeScale", state.soundScale.volume(Config.runningBoost));
+            entry.addProperty("sizePitchScale", sizePitch(state));
+            entry.addProperty(
+                "soundCategory",
+                ActorSound.category(state.actor instanceof EntityPlayer, state.actor instanceof IMob)
+                    .getCategoryName());
             entry.addProperty("serverMotion", state.synchronizedMotion);
             entry.addProperty("support", state.support == null ? "block" : EntityList.getEntityString(state.support));
             if (state.lastContact != null) {
@@ -458,12 +465,16 @@ public final class FootstepController implements IResourceManagerReloadListener 
             state.initialized = false;
             state.support = support;
         }
+        double contactX = support == null ? motionX : motionX - support.posX;
+        double contactY = support == null ? feetY : feetY - support.posY;
+        double contactZ = support == null ? motionZ : motionZ - support.posZ;
+        state.soundScale.update(contactX, contactY, contactZ, state.generation, state.profile.runSpeed);
         int[] acceptedContacts = { 0 };
         try {
             state.tracker.update(
-                support == null ? motionX : motionX - support.posX,
-                support == null ? feetY : feetY - support.posY,
-                support == null ? motionZ : motionZ - support.posZ,
+                contactX,
+                contactY,
+                contactZ,
                 grounded,
                 motion == null ? actor.isOnLadder() : motion.climbing,
                 swimming,
@@ -490,6 +501,7 @@ public final class FootstepController implements IResourceManagerReloadListener 
         if (state.tracker.rebaselined()) {
             equipment.forget(actor);
             state.generation++;
+            state.soundScale.update(contactX, contactY, contactZ, state.generation, state.profile.runSpeed);
             state.lastContact = null;
         }
         double dx = actor.posX - state.lastX, dz = actor.posZ - state.lastZ;
@@ -697,7 +709,7 @@ public final class FootstepController implements IResourceManagerReloadListener 
 
     private AcousticContext context(ActorState state, float volume, double x, double y, double z) {
         EntityLivingBase actor = state.actor;
-        float source = actor == Minecraft.getMinecraft().thePlayer ? 1
+        float source = actor == Minecraft.getMinecraft().thePlayer ? Config.ownVolume
             : actor instanceof EntityPlayer ? Config.remoteVolume
                 : actor instanceof IMob ? Config.hostileVolume : Config.passiveVolume;
         long generation = state.generation;
@@ -705,12 +717,21 @@ public final class FootstepController implements IResourceManagerReloadListener 
             x,
             y,
             z,
-            volume * Config.volume * source * state.volume * state.profile.volume,
-            state.pitch,
+            volume * Config.volume
+                * source
+                * state.volume
+                * state.profile.volume
+                * state.soundScale.volume(Config.runningBoost),
+            state.pitch * sizePitch(state),
             actor == Minecraft.getMinecraft().thePlayer,
             () -> state.active && state.generation == generation
                 && eligible(actor)
-                && actor.worldObj.getEntityByID(actor.getEntityId()) == actor);
+                && actor.worldObj.getEntityByID(actor.getEntityId()) == actor)
+                    .withCategory(ActorSound.category(actor instanceof EntityPlayer, actor instanceof IMob));
+    }
+
+    private static float sizePitch(ActorState state) {
+        return Config.sizePitch ? SourceSoundScale.pitch(state.actor.width, state.profile.referenceWidth) : 1;
     }
 
     private void emit(String name, float volume, float pitch, AcousticContext context) {
@@ -728,14 +749,7 @@ public final class FootstepController implements IResourceManagerReloadListener 
                 .getSound(location) != null);
         voicesThisTick++;
         mc.getSoundHandler()
-            .playSound(
-                new PositionedSoundRecord(
-                    soundName,
-                    volume,
-                    pitch,
-                    (float) context.x,
-                    (float) context.y,
-                    (float) context.z));
+            .playSound(new ActorSound(soundName, volume, pitch, context));
     }
 
     private static final class ActorState {
@@ -748,6 +762,7 @@ public final class FootstepController implements IResourceManagerReloadListener 
         Contact lastContact;
         final ImpactSounds impacts = new ImpactSounds();
         final LandingSoundGate fallSounds = new LandingSoundGate();
+        final SourceSoundScale soundScale = new SourceSoundScale();
         SwimmingSounds.Mode liquidMode = SwimmingSounds.Mode.NONE;
         long lastSwimGroup = Long.MIN_VALUE, lastSwimGeneration = Long.MIN_VALUE;
         String foliage, lastFoliage, lastMaterial;
