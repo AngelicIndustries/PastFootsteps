@@ -15,6 +15,11 @@ Observers must not mutate the actor/world or retain actor references indefinitel
 
 For a concrete mod model whose gait cannot be expressed in profile JSON, see [Custom gait generators](Gait-integrations.md).
 
+`ContactKind.isJump()` covers moving `JUMP` and standing `JUMP_STILL`; `isLanding()` covers `LAND`, `LAND_SOFT`, and
+`LAND_SOFT_RUN`. Jump/landing groups retain all physical feet even when the audio consumer uses a single foot or
+deduplicates a shared material. The first contact in an airborne group is its primary foot, selected from gait phase.
+Use these predicates rather than assuming every jump or landing has one enum value.
+
 Contacts use actor-relative gait geometry and collision-aware world positions. They do not claim to match arbitrary renderer bones. Unknown creatures retain native sounds until an entity profile explicitly selects them. Resource-pack profiles are the normal integration path for ordinary bipeds and quadrupeds; specialized anatomy and moving contraptions require a concrete adapter.
 
 Use `/pf status`, `/pf reload`, `/pf report` and the contact HUD/markers during development. The local JSON report includes effective profiles, gait phase, material, authority source, budgets and resource diagnostics, without player names or server addresses.

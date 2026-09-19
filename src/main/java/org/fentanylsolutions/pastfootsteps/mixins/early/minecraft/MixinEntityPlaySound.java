@@ -13,7 +13,7 @@ public class MixinEntityPlaySound {
 
     @Inject(method = "playSound", at = @At("HEAD"), cancellable = true)
     private void pastfootsteps$suppressSound(String sound, float volume, float pitch, CallbackInfo callback) {
-        if (FootstepController.suppressSound((Entity) (Object) this, sound)) {
+        if (FootstepController.interceptSound((Entity) (Object) this, sound, volume, pitch)) {
             callback.cancel();
         }
     }

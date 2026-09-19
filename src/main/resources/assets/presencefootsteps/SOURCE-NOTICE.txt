@@ -38,6 +38,11 @@ remote swim scaling are also adapted from TerrestrialStepSoundGenerator
 and VaryingAcoustic at this MIT-licensed revision. PastFootsteps supplies
 timing through its shared contact engine and retains shallow-water wading.
 
+Takeoff/landing event selection, the standing-jump and hard-landing
+thresholds, and grouped material deduplication also follow this revision's
+TerrestrialStepSoundGenerator. Physical contact groups remain owned by
+PastFootsteps, with separate sound selection and scoped native fall fallback.
+
 The 455 OGG files imported from that namespace are byte-identical MIT-source
 assets and are all mono. Its imported sound event categories were changed
 from "master" to the existing 1.7.10 "player" category. Local aliases cover

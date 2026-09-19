@@ -18,6 +18,8 @@ public class MixinNetHandlerPlayClient {
             packet.func_149212_c(),
             packet.func_149207_d(),
             packet.func_149211_e(),
-            packet.func_149210_f())) ci.cancel();
+            packet.func_149210_f(),
+            packet.func_149208_g(),
+            packet.func_149209_h())) ci.cancel();
     }
 }

@@ -115,12 +115,18 @@ public final class EquipmentSounds {
 
     /** Plays at most one body accent per simultaneous contact group, and at most one boot accent per foot contact. */
     public void play(ResolvedContact resolved, AcousticContext base) {
+        play(resolved, base, true);
+    }
+
+    /** Body accents stay grouped even when only one foot supplies the impact's foot/rain audio. */
+    public void play(ResolvedContact resolved, AcousticContext base, boolean footAudio) {
         if (resolved == null || base == null || !base.isValid() || resolved.actor == null) return;
         EntityLivingBase actor = resolved.actor;
         ContactKind kind = resolved.contact.kind;
         if (kind == ContactKind.STAND || kind == ContactKind.SWIM || kind == ContactKind.CLIMB) return;
 
-        if (EquipmentSettings.rain && resolved.rainExposed
+        if (footAudio && EquipmentSettings.rain
+            && resolved.rainExposed
             && allowed(actor, EquipmentSettings.rainEntities, EquipmentSettings.rainEntityListIsBlacklist)) {
             float strength = actor.worldObj == null ? 0 : actor.worldObj.getRainStrength(0);
             play("rain", kind, base, EquipmentSettings.rainVolume * strength, 1.75F);
@@ -129,7 +135,7 @@ public final class EquipmentSounds {
         if (!allowed(actor, EquipmentSettings.armorEntities, false)) return;
         ItemStack boots = actor.getEquipmentInSlot(1);
         String bootCategory = category(boots);
-        if (EquipmentSettings.footwear && bootCategory != null && kind != ContactKind.JUMP) {
+        if (footAudio && EquipmentSettings.footwear && bootCategory != null && !kind.isJump()) {
             play("foot." + bootCategory, kind, base, EquipmentSettings.footwearVolume, 1);
         }
 
@@ -182,7 +188,7 @@ public final class EquipmentSounds {
 
     private void play(String acoustic, ContactKind kind, AcousticContext base, float volume, float pitch) {
         if (volume <= 0) return;
-        engine.play(acoustic, kind.acousticKey, base.scale(volume, pitch));
+        engine.play(acoustic, kind == ContactKind.JUMP_STILL ? "jump" : kind.acousticKey, base.scale(volume, pitch));
     }
 
     private void loadBuiltinAcoustics() {

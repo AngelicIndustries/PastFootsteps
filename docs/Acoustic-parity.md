@@ -21,6 +21,24 @@ The audited 1.7.10 Dynamic Surroundings footstep engine already supplies player 
 disabling PF swimming or removing its acoustic definition leaves that path available. Separate DS underwater ambience
 and water-entry splash sounds are not suppressed. An explicitly empty acoustic still means intentional silence.
 
+## Takeoff and landing
+
+Standing takeoff selects `wander`; moving takeoff selects `jump` on the next gait foot. Soft landings select `climb`
+or `climb_run`, with the usual `walk`/`run` fallback. Hard landings over 0.9 blocks select `land`. The standing-jump
+threshold is squared horizontal movement below `0.005`, matching the units of the MIT source. Physical contacts still
+cover the whole gait for footprint consumers; the sound consumer selects one foot for moving takeoff/soft landing and
+deduplicates identical materials and layers within standing takeoff/hard landing groups. Armor body accents remain
+once per group. A hard landing can still sound while sneaking; quieter movements retain sneak suppression.
+
+Native small/big fall impacts and their same-tick block sound wait up to four client ticks for a matching PF landing.
+A nearby landing with an available mapped acoustic replaces them. Missing material/event definitions retain native
+fallback; explicit silent definitions retain ownership. Queue limits fail open, and disabled effects restore pending
+native audio. Actor resets/teleports discard old-position pending impacts. Remote packet attribution stays conservative
+when multiple actors could be the source. Hurt cries, damage itself, and water-entry splashes are not intercepted.
+This adapts upstream's broader native-sound filter to PF's per-actor ownership and AET's separate splash effects.
+
+## Materials and biome variance
+
 Material maps continue to use 1.7 block registry names and metadata. The reader also accepts vanilla block keys without
 the `minecraft:` prefix and modern PF primitive spellings such as `minecraft:block.stone.step`. Modern block-state/tag
 selectors cannot be translated reliably to 1.7 metadata and are not supported.

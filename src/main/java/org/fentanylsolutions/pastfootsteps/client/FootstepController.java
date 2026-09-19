@@ -26,6 +26,8 @@ import net.minecraft.util.AxisAlignedBB;
 import net.minecraft.util.ResourceLocation;
 import net.minecraft.world.World;
 import net.minecraft.world.biome.BiomeGenBase;
+import net.minecraftforge.common.MinecraftForge;
+import net.minecraftforge.event.entity.PlaySoundAtEntityEvent;
 
 import org.fentanylsolutions.pastfootsteps.PastFootsteps;
 import org.fentanylsolutions.pastfootsteps.api.ContactGenerators;
@@ -41,6 +43,8 @@ import org.fentanylsolutions.pastfootsteps.network.RemoteMotion;
 import org.fentanylsolutions.pastfootsteps.profile.EntityProfile;
 import org.fentanylsolutions.pastfootsteps.profile.ProfileLibrary;
 import org.fentanylsolutions.pastfootsteps.sound.AcousticContext;
+import org.fentanylsolutions.pastfootsteps.sound.ImpactSounds;
+import org.fentanylsolutions.pastfootsteps.sound.LandingSoundGate;
 import org.fentanylsolutions.pastfootsteps.sound.SoundEngine;
 import org.fentanylsolutions.pastfootsteps.sound.SoundNames;
 import org.fentanylsolutions.pastfootsteps.sound.SwimmingSounds;
@@ -90,6 +94,52 @@ public final class FootstepController implements IResourceManagerReloadListener 
         return state != null && state.surface != null && sameSound(name, state.surface.vanillaSound);
     }
 
+    public static boolean interceptSound(Entity entity, String name, float volume, float pitch) {
+        ActorState state = INSTANCE.actors.get(entity);
+        if (state != null && landingSound(state, name)) return INSTANCE.deferLandingSound(
+            state,
+            name,
+            entity.posX,
+            entity.posY - entity.yOffset,
+            entity.posZ,
+            volume,
+            pitch,
+            true);
+        return suppressSound(entity, name);
+    }
+
+    private static boolean landingSound(ActorState state, String name) {
+        long tick = state.actor.worldObj.getTotalWorldTime();
+        if (LandingSoundGate.isFallSound(name)) {
+            state.fallSounds.nativeFall(tick);
+            return true;
+        }
+        String path = name != null && name.startsWith("minecraft:") ? name.substring(10) : name;
+        return path != null && state.fallSounds.nativeImpactTick(tick)
+            && (path.startsWith("step.") || state.surface != null && sameSound(name, state.surface.vanillaSound));
+    }
+
+    private boolean deferLandingSound(ActorState state, String name, double x, double y, double z, float volume,
+        float pitch, boolean entityEvent) {
+        if (!Config.jumpLand || !Config.surfaceSounds
+            || !sound.ready()
+            || !state.active
+            || !state.initialized
+            || !eligible(state.actor)) return false;
+        World sourceWorld = state.actor.worldObj;
+        return state.fallSounds.defer(sourceWorld.getTotalWorldTime(), state.generation, x, y, z, () -> {
+            Minecraft mc = Minecraft.getMinecraft();
+            if (mc.theWorld != sourceWorld) return;
+            String restoredName = name;
+            if (entityEvent) {
+                PlaySoundAtEntityEvent event = new PlaySoundAtEntityEvent(state.actor, name, volume, pitch);
+                if (MinecraftForge.EVENT_BUS.post(event)) return;
+                restoredName = event.name;
+            }
+            mc.theWorld.playSound(x, y, z, restoredName, volume, pitch, false);
+        });
+    }
+
     private static boolean sameSound(String first, String second) {
         if (first == null || second == null) return false;
         return (first.startsWith("minecraft:") ? first.substring(10) : first)
@@ -97,7 +147,7 @@ public final class FootstepController implements IResourceManagerReloadListener 
     }
 
     /** 1.7 packets have no actor ID. Ambiguous nearby actors deliberately retain their native sound. */
-    public static boolean suppressRemoteSound(String name, double x, double y, double z) {
+    public static boolean suppressRemoteSound(String name, double x, double y, double z, float volume, float pitch) {
         World world = Minecraft.getMinecraft().theWorld;
         if (!Config.enabled || !Config.surfaceSounds || !INSTANCE.sound.ready() || world == null || name == null)
             return false;
@@ -117,6 +167,12 @@ public final class FootstepController implements IResourceManagerReloadListener 
             } else if (distance < second) second = distance;
         }
         // Unknown mobs also participate in attribution, so their sounds cannot be claimed by a nearby player.
+        ActorState state = INSTANCE.actors.get(closest);
+        if (LandingSoundGate.isFallSound(name) && second - best <= 0.04) return false;
+        if (state != null && landingSound(state, name)) {
+            // An impact needs one specific owner; never assign ambiguous packets to a guessed actor.
+            return second - best > 0.04 && INSTANCE.deferLandingSound(state, name, x, y, z, volume, pitch, false);
+        }
         if (closest == null || !suppressSound(closest, name)) return false;
         if (second - best > 0.04) return true;
         // Attribution among several owned actors is harmless: all already have replacement contacts.
@@ -158,7 +214,10 @@ public final class FootstepController implements IResourceManagerReloadListener 
     }
 
     public void reset() {
-        for (ActorState state : actors.values()) state.active = false;
+        for (ActorState state : actors.values()) {
+            state.fallSounds.tick(state.actor.worldObj.getTotalWorldTime(), state.generation, false);
+            state.active = false;
+        }
         actors.clear();
         sound.clear();
         footprints.reset();
@@ -269,6 +328,7 @@ public final class FootstepController implements IResourceManagerReloadListener 
         while (iterator.hasNext()) {
             ActorState state = iterator.next();
             if (!eligible(state.actor)) {
+                state.fallSounds.tick(world.getTotalWorldTime(), state.generation, false);
                 state.active = false;
                 iterator.remove();
                 continue;
@@ -281,6 +341,10 @@ public final class FootstepController implements IResourceManagerReloadListener 
                 state.initialized = false;
             }
             update(state);
+            state.fallSounds.tick(
+                world.getTotalWorldTime(),
+                state.generation,
+                Config.jumpLand && Config.surfaceSounds && sound.ready());
         }
         // Validate delayed owners after this tick's removals, teleports and dimension changes.
         sound.tick();
@@ -340,7 +404,10 @@ public final class FootstepController implements IResourceManagerReloadListener 
             if (existing == null) equipment.forget(actor);
             ordered.put(actor, existing != null ? existing : new ActorState(actor, selectedProfile));
         }
-        for (ActorState state : actors.values()) if (!ordered.containsKey(state.actor)) state.active = false;
+        for (ActorState state : actors.values()) if (ordered.get(state.actor) != state) {
+            state.fallSounds.tick(world.getTotalWorldTime(), state.generation, false);
+            state.active = false;
+        }
         actors.clear();
         actors.putAll(ordered);
     }
@@ -487,7 +554,7 @@ public final class FootstepController implements IResourceManagerReloadListener 
             contact.z,
             contact.foot.lateral * width,
             contact.foot.forward * width);
-        if (surface == null && state.surface != null && state.surface.grounded && contact.kind != ContactKind.JUMP) {
+        if (surface == null && state.surface != null && state.surface.grounded && !contact.kind.isJump()) {
             surface = resolver.resolveAt(
                 state.actor,
                 contact.x,
@@ -496,7 +563,7 @@ public final class FootstepController implements IResourceManagerReloadListener 
                 contact.foot.lateral * width,
                 contact.foot.forward * width);
         }
-        if (surface == null) surface = contact.kind == ContactKind.JUMP ? state.lastSurface : state.surface;
+        if (surface == null) surface = contact.kind.isJump() ? state.lastSurface : state.surface;
         if (surface == null) return;
         ResolvedContact resolved = new ResolvedContact(state.actor, state.profile, contact, surface);
         state.lastContact = contact;
@@ -511,18 +578,28 @@ public final class FootstepController implements IResourceManagerReloadListener 
         footprints.contact(resolved);
         contactDebug.add(resolved);
         org.fentanylsolutions.pastfootsteps.api.ContactEvents.publish(resolved);
-        if (resolved.actor.isSneaking() && !state.liquidMode.swimming()) return;
-        if (!Config.jumpLand && (contact.kind == ContactKind.JUMP || contact.kind.isLanding())) return;
-        float groupVolume = (float) (1 / Math.sqrt(contact.groupSize));
-        equipment.play(resolved, context(state, groupVolume, surface.contactX, surface.contactY, surface.contactZ));
-        if (!Config.surfaceSounds || !sound.ready()) return;
+        if (resolved.actor.isSneaking() && !state.liquidMode.swimming() && contact.kind != ContactKind.LAND) return;
+        boolean impact = ImpactSounds.impact(contact.kind);
+        if (!Config.jumpLand && impact) return;
+        boolean selected = state.impacts.select(contact, state.generation);
+        float groupVolume = impact ? 1 : (float) (1 / Math.sqrt(contact.groupSize));
+        equipment.play(
+            resolved,
+            context(state, groupVolume, surface.contactX, surface.contactY, surface.contactZ),
+            selected && (!impact || state.impacts.claim("equipment", "impact")));
+        if (!selected || !Config.surfaceSounds || !sound.ready()) return;
         if (state.liquidMode.swimming()) {
             consumeSwimming(state, resolved);
             return;
         }
         String event = contact.kind.acousticKey;
-        if (surface.material == null || SurfaceResolver.emitter(surface.material) && !canPlay(surface.material)) {
-            if (contact.kind != ContactKind.STAND) {
+        boolean nativeSurface = surface.material == null || SurfaceResolver.emitter(surface.material)
+            && !(impact ? canPlay(surface.material, event) : canPlay(surface.material));
+        String surfaceKey = nativeSurface
+            ? surface.vanillaSound + ":" + surface.vanillaVolume + ":" + surface.vanillaPitch
+            : surface.material;
+        if (!impact || state.impacts.claim("surface", surfaceKey)) {
+            if (nativeSurface && contact.kind != ContactKind.STAND) {
                 AcousticContext context = context(
                     state,
                     groupVolume,
@@ -534,18 +611,27 @@ public final class FootstepController implements IResourceManagerReloadListener 
                     surface.vanillaVolume * context.volume,
                     surface.vanillaPitch * context.pitch,
                     context);
+            } else if (!nativeSurface) {
+                playMaterial(
+                    state,
+                    surface.material,
+                    event,
+                    groupVolume,
+                    surface.contactX,
+                    surface.contactY,
+                    surface.contactZ);
             }
-        } else {
-            playMaterial(
-                state,
-                surface.material,
-                event,
-                groupVolume,
-                surface.contactX,
-                surface.contactY,
-                surface.contactZ);
         }
-        if (Config.wet && surface.wet && !resolved.rainExposed && contact.kind != ContactKind.STAND) {
+        if (contact.kind.isLanding() && surface.grounded
+            && surface.material != null
+            && canPlay(surface.material, event)) {
+            state.fallSounds
+                .replaced(state.actor.worldObj.getTotalWorldTime(), state.generation, contact.x, contact.y, contact.z);
+        }
+        if (Config.wet && surface.wet
+            && !resolved.rainExposed
+            && contact.kind != ContactKind.STAND
+            && (!impact || state.impacts.claim("wet", surface.wetMaterial))) {
             playMaterial(
                 state,
                 surface.wetMaterial,
@@ -555,7 +641,8 @@ public final class FootstepController implements IResourceManagerReloadListener 
                 surface.contactY,
                 surface.contactZ);
         }
-        if (state.foliage != null && contact.kind != ContactKind.STAND) {
+        if (state.foliage != null && contact.kind != ContactKind.STAND
+            && (!impact || state.impacts.claim("foliage", state.foliage))) {
             playMaterial(
                 state,
                 state.foliage,
@@ -592,6 +679,11 @@ public final class FootstepController implements IResourceManagerReloadListener 
 
     private boolean canPlay(String names) {
         for (String name : names.split(",")) if (sound.canPlay(name.trim())) return true;
+        return false;
+    }
+
+    private boolean canPlay(String names, String event) {
+        for (String name : names.split(",")) if (sound.canPlay(name.trim(), event)) return true;
         return false;
     }
 
@@ -654,6 +746,8 @@ public final class FootstepController implements IResourceManagerReloadListener 
         Entity support;
         Surface surface, lastSurface;
         Contact lastContact;
+        final ImpactSounds impacts = new ImpactSounds();
+        final LandingSoundGate fallSounds = new LandingSoundGate();
         SwimmingSounds.Mode liquidMode = SwimmingSounds.Mode.NONE;
         long lastSwimGroup = Long.MIN_VALUE, lastSwimGeneration = Long.MIN_VALUE;
         String foliage, lastFoliage, lastMaterial;

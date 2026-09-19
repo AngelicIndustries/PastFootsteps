@@ -12,8 +12,10 @@ public enum ContactKind {
     CLIMB("walk"),
     SWIM("walk"),
     JUMP("jump"),
+    JUMP_STILL("wander"),
     LAND("land"),
     LAND_SOFT("climb"),
+    LAND_SOFT_RUN("climb_run"),
     SHUFFLE("wander"),
     STAND("stand");
 
@@ -24,6 +26,10 @@ public enum ContactKind {
     }
 
     public boolean isLanding() {
-        return this == LAND || this == LAND_SOFT;
+        return this == LAND || this == LAND_SOFT || this == LAND_SOFT_RUN;
+    }
+
+    public boolean isJump() {
+        return this == JUMP || this == JUMP_STILL;
     }
 }

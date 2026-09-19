@@ -17,6 +17,8 @@ Disabling the General master restores the prior footstep engine and disables all
 
 Swimming uses dedicated water/lava acoustics, with stroke volume following movement in any direction, including vertical movement. Other swimmers are quieter than your own strokes. Supported shallow-water wading keeps the surface and wet layers; swimming skips those dry surface sounds. `effects.swimming=false` restores vanilla or Dynamic Surroundings swimming audio, while `volume.swimming=0` mutes PF's owned swimming channel. Underwater ambience and AET's water-entry splashes remain separate.
 
+`effects.jumpAndLand` controls takeoff and landing audio. Standing takeoff uses a shuffle; moving takeoff and soft landing use one foot's sound. Running soft landings use the running acoustic, and drops over 0.9 blocks use a grouped hard landing. Identical materials within an impact play once; landing across different materials can play both. Hard landings remain audible while sneaking. Disabling this setting retains physical landing contacts and footprints, and leaves native fall sounds available.
+
 Sound samples obey Minecraft's Players volume, as in the original PF sound library. PF's separate other-player/passive/hostile multipliers provide actor-specific control. These do not move events into Minecraft's separate mob sound categories.
 
 JSON overrides are documented in [Resource packs](Resource-packs.md), [Footprints](Footprints.md), [Equipment](Equipment.md) and [Support surfaces](Support-surfaces.md). Files are not copied from AET automatically. Use `/pf status` for the focused actor, `/pf reload` after JSON edits, and `/pf report` to save `config/pastfootsteps/diagnostics/latest-report.json` for debugging.

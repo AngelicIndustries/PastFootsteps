@@ -100,6 +100,37 @@ public class AcousticEngineTest {
     }
 
     @Test
+    public void impactOwnershipFollowsEventFallbackAndPreservesExplicitSilence() {
+        load("{\"type\":\"events\",\"walk\":\"walk\",\"run\":\"run\",\"wander\":\"shuffle\"}");
+        for (String event : new String[] { "jump", "wander", "land", "climb", "climb_run" }) {
+            assertTrue(engine.has("test", event));
+            engine.play("test", event, context);
+        }
+        assertEquals(Arrays.asList("shuffle", "shuffle", "run", "walk", "run"), names);
+        load("{\"type\":\"events\",\"jump\":\"jumpOnly\"}");
+        assertFalse(engine.has("test", "land"));
+        assertFalse(engine.has("missing", "land"));
+        load("{\"type\":\"events\",\"land\":null}");
+        assertTrue(engine.has("test", "land"));
+        names.clear();
+        engine.play("test", "land", context);
+        assertTrue(names.isEmpty());
+    }
+
+    @Test
+    public void nestedImpactDefinitionsCannotClaimAnAbsentEvent() {
+        for (String wrapper : new String[] { "{\"type\":\"delayed\",\"delay\":50,\"acoustic\":%s}",
+            "{\"type\":\"chance\",\"probability\":50,\"acoustic\":%s}",
+            "{\"type\":\"weighted\",\"entries\":[{\"weight\":1,\"acoustic\":%s}]}", "[%s]" }) {
+            load(String.format(wrapper, "{\"type\":\"events\",\"jump\":\"jumpOnly\"}"));
+            assertFalse(wrapper, engine.has("test", "land"));
+            assertTrue(wrapper, engine.has("test", "jump"));
+            load(String.format(wrapper, "{\"type\":\"empty\"}"));
+            assertTrue(wrapper, engine.has("test", "land"));
+        }
+    }
+
+    @Test
     public void weightedEntriesAlwaysChooseOneAndHonorZeroWeights() {
         load(
             "{\"type\":\"probability\",\"entries\":[{\"weight\":0,\"acoustic\":\"never\"},{\"acoustic\":\"a\"},{\"acoustic\":\"b\"}]}");

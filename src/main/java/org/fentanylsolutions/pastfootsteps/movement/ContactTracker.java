@@ -1,5 +1,6 @@
 package org.fentanylsolutions.pastfootsteps.movement;
 
+import java.util.Arrays;
 import java.util.Random;
 
 import org.fentanylsolutions.pastfootsteps.profile.GaitDefinition;
@@ -18,7 +19,7 @@ public final class ContactTracker implements ContactGenerator {
     private final GaitDefinition.Contact[] walk, run;
     private final Random random;
     private boolean initialized, grounded, moving, cycleRunning, running, jumped, climbing, swimming;
-    private double x, y, z, peakY, phase, lastDx, lastDz, speed, liquidSpeed;
+    private double x, y, z, peakY, phase, airbornePhase, lastDx, lastDz, speed, liquidSpeed;
     private double suspectDx, suspectDy, suspectDz;
     private boolean suspectMotion;
     private int airTicks, groundMisses, idleTicks, nextStand, shuffleCooldown;
@@ -91,6 +92,7 @@ public final class ContactTracker implements ContactGenerator {
         boolean changedMode = climbing != onLadder || swimming != inLiquid;
         if (changedMode) {
             phase = 0;
+            airbornePhase = 0;
             jumped = false;
             airTicks = 0;
             peakY = newY;
@@ -105,25 +107,23 @@ public final class ContactTracker implements ContactGenerator {
 
         boolean landed = false;
         if (!onLadder && !inLiquid && !changedMode) {
+            if (grounded && !supported) {
+                airbornePhase = phase;
+            }
             if (grounded && !supported && dy > 0.1) {
                 jumped = true;
-                if (jumpLand && !sneaking) emitGroup(walk, ContactKind.JUMP, x, y, z, 1, listener);
+                ContactKind jump = horizontal * horizontal < 0.005 ? ContactKind.JUMP_STILL : ContactKind.JUMP;
+                if (jumpLand && !sneaking) emitAirborneGroup(jump, x, y, z, listener, true, false, airbornePhase);
                 phase = 0;
             } else if (!grounded && supported) {
                 double fall = peakY - newY;
                 if ((airTicks >= 2 || jumped) && fall > 0.15) {
-                    if (jumpLand && !sneaking) {
-                        emitGroup(
-                            walk,
-                            fall > 0.9 ? ContactKind.LAND : ContactKind.LAND_SOFT,
-                            newX,
-                            newY,
-                            newZ,
-                            1,
-                            listener);
-                    }
+                    boolean hard = fall > 0.9;
+                    ContactKind landing = hard ? ContactKind.LAND
+                        : running ? ContactKind.LAND_SOFT_RUN : ContactKind.LAND_SOFT;
+                    if (jumpLand && !sneaking)
+                        emitAirborneGroup(landing, newX, newY, newZ, listener, true, !hard, airbornePhase);
                     landed = true;
-                    phase = 0;
                 }
                 jumped = false;
             }
@@ -131,7 +131,7 @@ public final class ContactTracker implements ContactGenerator {
 
         if (supported || onLadder || inLiquid) {
             if (nowMoving) {
-                if (idleTicks >= 4) {
+                if (idleTicks >= 4 && !landed) {
                     phase = 0;
                     cycleRunning = running;
                 }
@@ -150,6 +150,7 @@ public final class ContactTracker implements ContactGenerator {
                 double previousDistance = Math.sqrt(lastDx * lastDx + lastDz * lastDz);
                 if (shuffle && moving
                     && supported
+                    && !landed
                     && !inLiquid
                     && !onLadder
                     && !sneaking
@@ -255,6 +256,23 @@ public final class ContactTracker implements ContactGenerator {
         }
     }
 
+    private void emitAirborneGroup(ContactKind event, double atX, double atY, double atZ, Listener listener,
+        boolean rotate, boolean advancePhase, double referencePhase) {
+        GaitDefinition.Contact[] feet = rotate ? rotatedFeet(walk, referencePhase) : walk;
+        emitGroup(feet, event, atX, atY, atZ, 1, listener);
+        if (advancePhase && feet.length > 0) phase = feet[0].phase >= 1 - EPSILON ? 0 : feet[0].phase;
+    }
+
+    private GaitDefinition.Contact[] rotatedFeet(GaitDefinition.Contact[] feet, double referencePhase) {
+        if (feet.length < 2) return feet;
+        int first = 0;
+        while (first < feet.length && feet[first].phase <= referencePhase + EPSILON) first++;
+        if (first == feet.length) first = 0;
+        GaitDefinition.Contact[] rotated = Arrays.copyOf(feet, feet.length);
+        for (int i = 0; i < feet.length; i++) rotated[i] = feet[(first + i) % feet.length];
+        return rotated;
+    }
+
     private void emitSingle(GaitDefinition.Contact foot, ContactKind event, double atX, double atY, double atZ,
         Listener listener) {
         if (emitted == MAX_CONTACTS_PER_TICK) return;
@@ -273,7 +291,7 @@ public final class ContactTracker implements ContactGenerator {
         climbing = onLadder;
         swimming = inLiquid;
         jumped = moving = running = cycleRunning = false;
-        phase = lastDx = lastDz = speed = liquidSpeed = 0;
+        phase = airbornePhase = lastDx = lastDz = speed = liquidSpeed = 0;
         idleTicks = airTicks = groundMisses = shuffleCooldown = 0;
         nextStand = nextStandInterval();
         kind = ContactKind.STAND;

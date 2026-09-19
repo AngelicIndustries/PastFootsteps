@@ -12,6 +12,7 @@ import java.util.List;
 import java.util.Map;
 import java.util.Random;
 import java.util.Set;
+import java.util.function.Predicate;
 
 import net.minecraft.client.resources.IResource;
 import net.minecraft.client.resources.IResourceManager;
@@ -41,6 +42,10 @@ public final class AcousticEngine {
     private interface Acoustic {
 
         void play(AcousticContext context, String event);
+
+        default boolean supports(String event) {
+            return true;
+        }
     }
 
     private final Map<String, Acoustic> acoustics = new HashMap<>();
@@ -61,6 +66,11 @@ public final class AcousticEngine {
 
     public boolean has(String name) {
         return acoustics.containsKey(name);
+    }
+
+    public boolean has(String name, String event) {
+        Acoustic acoustic = acoustics.get(name);
+        return acoustic != null && acoustic.supports(event);
     }
 
     public boolean ready() {
@@ -149,7 +159,10 @@ public final class AcousticEngine {
         if (value.isJsonArray()) {
             List<Acoustic> children = new ArrayList<>();
             for (JsonElement child : value.getAsJsonArray()) children.add(parse(child, depth + 1));
-            return (context, event) -> { for (Acoustic child : children) child.play(context, event); };
+            return supported(
+                (context, event) -> { for (Acoustic child : children) child.play(context, event); },
+                event -> children.isEmpty() || children.stream()
+                    .anyMatch(child -> child.supports(event)));
         }
         JsonObject object = value.getAsJsonObject();
         String type = object.has("type") ? object.get("type")
@@ -161,12 +174,13 @@ public final class AcousticEngine {
                     if (!entry.getKey()
                         .equals("type")) events.put(entry.getKey(), parse(entry.getValue(), depth + 1));
                 }
-                return (context, event) -> {
-                    String state = event;
-                    while (state != null && !events.containsKey(state)) state = fallback(state);
-                    if (state != null) events.get(state)
-                        .play(context, event);
-                };
+                return supported((context, event) -> {
+                    Acoustic child = eventAcoustic(events, event);
+                    if (child != null) child.play(context, event);
+                }, event -> {
+                    Acoustic child = eventAcoustic(events, event);
+                    return child != null && child.supports(event);
+                });
             }
             case "simultaneous":
                 return parse(object.has("acoustics") ? object.get("acoustics") : object.get("array"), depth + 1);
@@ -196,7 +210,7 @@ public final class AcousticEngine {
                 float sum = 0;
                 for (Weighted entry : entries) sum += entry.weight;
                 final float total = finite(sum);
-                return (context, event) -> {
+                return supported((context, event) -> {
                     if (total <= 0) return;
                     float selection = random.nextFloat() * total;
                     for (Weighted entry : entries) {
@@ -206,12 +220,16 @@ public final class AcousticEngine {
                         }
                         selection -= entry.weight;
                     }
-                };
+                },
+                    event -> total <= 0 || entries.stream()
+                        .anyMatch(entry -> entry.weight > 0 && entry.acoustic.supports(event)));
             }
             case "chance": {
                 Acoustic child = parse(object.get("acoustic"), depth + 1);
                 float probability = number(object, "probability", 100);
-                return (context, event) -> { if (random.nextFloat() * 100 < probability) child.play(context, event); };
+                return supported(
+                    (context, event) -> { if (random.nextFloat() * 100 < probability) child.play(context, event); },
+                    event -> probability <= 0 || child.supports(event));
             }
             case "delayed": {
                 Acoustic child = object.has("acoustic") ? parse(object.get("acoustic"), depth + 1)
@@ -224,11 +242,11 @@ public final class AcousticEngine {
                     : new Range(
                         number(object, "delay_min", 0),
                         number(object, "delay_max", number(object, "delay_min", 0)));
-                return (context, event) -> {
+                return supported((context, event) -> {
                     int ticks = (int) Math.min(1200, Math.ceil(delay.sample(random) / 50.0));
                     if (ticks <= 0) child.play(context, event);
                     else if (pending.size() < MAX_PENDING) pending.add(new Pending(child, ticks, context, event));
-                };
+                }, child::supports);
             }
             case "empty":
             case "silent":
@@ -294,6 +312,27 @@ public final class AcousticEngine {
                 volume.sample(random, context.volumePosition) * context.volume,
                 pitch.sample(random, context.pitchPosition) * context.pitch,
                 context);
+        };
+    }
+
+    private static Acoustic eventAcoustic(Map<String, Acoustic> events, String event) {
+        String state = event;
+        while (state != null && !events.containsKey(state)) state = fallback(state);
+        return state == null ? null : events.get(state);
+    }
+
+    private static Acoustic supported(Acoustic acoustic, Predicate<String> support) {
+        return new Acoustic() {
+
+            @Override
+            public void play(AcousticContext context, String event) {
+                acoustic.play(context, event);
+            }
+
+            @Override
+            public boolean supports(String event) {
+                return support.test(event);
+            }
         };
     }
 

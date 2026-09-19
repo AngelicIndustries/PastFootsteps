@@ -154,6 +154,100 @@ public class ContactTrackerTest {
     }
 
     @Test
+    public void standingTakeoffUsesStillJumpAndKeepsBothFeet() {
+        Fixture f = new Fixture(BIPED);
+        f.at(0, 0, 0);
+        f.ground = false;
+        f.at(0, 0.3, 0);
+        assertEquals(ContactKind.JUMP_STILL, f.events.get(0).kind);
+        assertEquals(2, f.events.size());
+        assertEquals(f.events.get(0).group, f.events.get(1).group);
+    }
+
+    @Test
+    public void departureAfterMidCycleStartsWithNextFootAndSoftLandingContinuesWithFollowingFoot() {
+        Fixture f = new Fixture(BIPED);
+        f.at(0, 0, 0);
+        f.at(1.3, 0, 0);
+        f.ground = false;
+        f.at(1.31, 0.3, 0);
+        assertEquals("right", f.events.get(f.events.size() - 2).foot.footId);
+        f.at(1.5, 0.6, 0);
+        f.ground = true;
+        f.at(1.6, 0.3, 0);
+        Contact soft = f.events.get(f.events.size() - 2);
+        assertEquals(ContactKind.LAND_SOFT, soft.kind);
+        f.at(3.0, 0.3, 0);
+        assertEquals("left", f.events.get(f.events.size() - 1).foot.footId);
+    }
+
+    @Test
+    public void ordinarySoftLandingUsesWalkVariant() {
+        Fixture f = new Fixture(BIPED);
+        f.at(0, 0, 0);
+        f.ground = false;
+        f.at(0.2, 0.3, 0);
+        f.at(0.4, 0.6, 0);
+        f.ground = true;
+        f.at(0.5, 0.3, 0);
+        assertTrue(
+            f.events.stream()
+                .anyMatch(c -> c.kind == ContactKind.LAND_SOFT));
+        assertFalse(
+            f.events.stream()
+                .anyMatch(c -> c.kind == ContactKind.LAND_SOFT_RUN));
+    }
+
+    @Test
+    public void softLandingUsesRunningVariantWhenRunning() {
+        Fixture f = new Fixture(BIPED);
+        f.runSpeed = 0.01;
+        f.at(0, 0, 0);
+        f.ground = false;
+        f.at(0.2, 0.3, 0);
+        f.at(0.4, 0.6, 0);
+        f.ground = true;
+        f.at(0.5, 0.3, 0);
+        assertTrue(
+            f.events.stream()
+                .anyMatch(c -> c.kind == ContactKind.LAND_SOFT_RUN));
+        assertEquals(
+            2,
+            f.events.stream()
+                .filter(c -> c.kind == ContactKind.LAND_SOFT_RUN)
+                .count());
+    }
+
+    @Test
+    public void disabledJumpLandDoesNotLeaveCadenceDebt() {
+        Fixture f = new Fixture(BIPED);
+        f.jumpLand = false;
+        f.at(0, 0, 0);
+        f.ground = false;
+        f.at(0, 0.3, 0);
+        f.at(0, 1.1, 0);
+        f.ground = true;
+        f.at(0, 0, 0);
+        assertTrue(f.events.isEmpty());
+        f.at(0.5, 0, 0);
+        assertTrue(f.events.isEmpty());
+    }
+
+    @Test
+    public void mutedLandingCannotTurnIntoAReversalShuffle() {
+        Fixture f = new Fixture(BIPED);
+        f.jumpLand = false;
+        f.shuffle = true;
+        f.at(0, 0, 0);
+        f.ground = false;
+        f.at(0.2, 0.3, 0);
+        f.at(0.4, 1.1, 0);
+        f.ground = true;
+        f.at(0.2, 0, 0);
+        assertTrue(f.events.isEmpty());
+    }
+
+    @Test
     public void briefGroundDetectionGapsAndTinyBobbingDoNotLand() {
         Fixture f = new Fixture(BIPED);
         f.at(0, 0, 0);
@@ -292,6 +386,7 @@ public class ContactTrackerTest {
         final ContactTracker tracker;
         final List<Contact> events = new ArrayList<>();
         boolean ground = true, climbing, swimming, sneaking, stationary;
+        boolean jumpLand = true, shuffle;
         double cycle = 2.4, runSpeed = 100;
 
         Fixture(GaitDefinition gait) {
@@ -311,8 +406,8 @@ public class ContactTrackerTest {
                 cycle,
                 0.5,
                 runSpeed,
-                true,
-                false,
+                jumpLand,
+                shuffle,
                 stationary,
                 events::add);
         }

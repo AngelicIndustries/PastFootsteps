@@ -37,6 +37,10 @@ public final class SoundEngine {
         return delegate.has(material);
     }
 
+    public boolean canPlay(String material, String event) {
+        return delegate.has(material, event);
+    }
+
     public void play(String material, String event, AcousticContext context) {
         delegate.play(material, event, context);
     }

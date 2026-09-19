@@ -25,5 +25,9 @@ PF's controller replaces it with the vanilla tracker for the same
 profile. Implementations should emit at most 16 contacts per tick and preserve grouped contacts when several feet
 land together.
 
+Emit the primary foot first in jump/landing groups. The audio consumer uses it for moving takeoffs and soft landings,
+while all physical contacts remain available to footprints and observers. Use `JUMP_STILL` for stationary takeoff and
+`LAND_SOFT_RUN` for a running soft landing; `isJump()` and `isLanding()` include these variants.
+
 Use this API only when a profile's ordinary contact geometry cannot describe a concrete model. Most bipeds,
 quadrupeds, pawed mobs, hoofed mobs, and horses are configured through resource-pack entity and gait profiles.

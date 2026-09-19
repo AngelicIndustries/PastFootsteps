@@ -51,7 +51,7 @@ public final class Footprints {
             || !surface.grounded
             || kind == ContactKind.CLIMB
             || kind == ContactKind.SWIM
-            || kind == ContactKind.JUMP
+            || kind.isJump()
             || kind == ContactKind.STAND
             || kind == ContactKind.SHUFFLE
             || resolved.actor.isInWater()
