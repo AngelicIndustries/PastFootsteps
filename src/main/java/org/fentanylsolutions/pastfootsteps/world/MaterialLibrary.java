@@ -118,7 +118,7 @@ public final class MaterialLibrary {
     /** Also retains the chosen sound source for native fallback on represented materials. */
     public Association resolve(Block block, int meta, String substrate, String materialMap) {
         if (block == null || block.getMaterial() == net.minecraft.block.material.Material.air)
-            return new Association(null, null);
+            return new Association(null, null, Origin.NONE, block, meta & 15);
         Snapshot current = snapshot;
         String suffix = normalizeSubstrate(substrate);
         List<BlockMaterial> chain = new ArrayList<>();
@@ -130,13 +130,22 @@ public final class MaterialLibrary {
             if (seen || state.block.getMaterial() == net.minecraft.block.material.Material.air) break;
             chain.add(state);
             String result = explicit(current, state, suffix, materialMap);
-            if (result != null && !"UNASSIGNED".equals(result)) return new Association(result, state.block.stepSound);
+            if (result != null && !"UNASSIGNED".equals(result)) return new Association(
+                result,
+                state.block.stepSound,
+                chain.size() == 1 ? Origin.BLOCK : Origin.BASE_BLOCK,
+                state.block,
+                state.metadata);
             // A derived fence/post may inherit a base's ordinary surface, but supplementary channels
             // must not acquire ordinary walking sounds just because their wrapper has a base.
             if (chain.size() > 1 && "bigger".equals(suffix)) {
                 result = explicit(current, state, "", materialMap);
-                if (result != null && !"UNASSIGNED".equals(result))
-                    return new Association(result, state.block.stepSound);
+                if (result != null && !"UNASSIGNED".equals(result)) return new Association(
+                    result,
+                    state.block.stepSound,
+                    chain.size() == 1 ? Origin.BLOCK : Origin.BASE_BLOCK,
+                    state.block,
+                    state.metadata);
             }
             try {
                 state = state.block instanceof DerivedBlock
@@ -150,16 +159,25 @@ public final class MaterialLibrary {
             // Prefer a known base's primitive sound over the wrapper's generic construction sound.
             for (int i = 1; i < chain.size(); i++) {
                 String result = primitive(current.primitives, chain.get(i).block);
-                if (result != null && !"UNASSIGNED".equals(result))
-                    return new Association(result, chain.get(i).block.stepSound);
+                if (result != null && !"UNASSIGNED".equals(result)) return new Association(
+                    result,
+                    chain.get(i).block.stepSound,
+                    Origin.BASE_PRIMITIVE,
+                    chain.get(i).block,
+                    chain.get(i).metadata);
             }
             String result = primitive(current.primitives, block);
             if ("UNASSIGNED".equals(result)) result = null;
+            BlockMaterial source = result == null && chain.size() > 1 ? chain.get(1)
+                : new BlockMaterial(block, meta & 15);
             return new Association(
                 result,
-                result == null && chain.size() > 1 ? chain.get(1).block.stepSound : block.stepSound);
+                source.block.stepSound,
+                result == null ? Origin.NATIVE : Origin.PRIMITIVE,
+                source.block,
+                source.metadata);
         }
-        return new Association(null, block.stepSound);
+        return new Association(null, block.stepSound, Origin.NONE, block, meta & 15);
     }
 
     private static String explicit(Snapshot current, BlockMaterial state, String suffix, String materialMap) {
@@ -171,14 +189,35 @@ public final class MaterialLibrary {
         return result == null ? current.blocks.lookup(name, state.metadata, suffix) : result;
     }
 
+    /** Loaded named maps, excluding the shared map represented by an empty ID. */
+    public Set<String> materialMapNames() {
+        return snapshot.actorBlocks.keySet();
+    }
+
+    public enum Origin {
+        BLOCK,
+        BASE_BLOCK,
+        PRIMITIVE,
+        BASE_PRIMITIVE,
+        NATIVE,
+        NONE
+    }
+
     public static final class Association {
 
         public final String name;
         public final Block.SoundType sound;
 
-        private Association(String name, Block.SoundType sound) {
+        public final Origin origin;
+        public final Block sourceBlock;
+        public final int sourceMetadata;
+
+        private Association(String name, Block.SoundType sound, Origin origin, Block sourceBlock, int sourceMetadata) {
             this.name = name;
             this.sound = sound;
+            this.origin = origin;
+            this.sourceBlock = sourceBlock;
+            this.sourceMetadata = sourceMetadata;
         }
     }
 

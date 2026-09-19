@@ -16,6 +16,7 @@ import java.util.List;
 import java.util.Map;
 
 import net.minecraft.block.Block;
+import net.minecraft.block.BlockDoublePlant;
 import net.minecraft.block.material.Material;
 import net.minecraft.client.resources.IResource;
 import net.minecraft.client.resources.IResourceManager;
@@ -25,6 +26,7 @@ import net.minecraft.entity.passive.EntityCow;
 import net.minecraft.profiler.Profiler;
 import net.minecraft.util.AxisAlignedBB;
 import net.minecraft.util.ResourceLocation;
+import net.minecraft.world.IBlockAccess;
 import net.minecraft.world.World;
 import net.minecraft.world.WorldProviderSurface;
 import net.minecraft.world.WorldSettings;
@@ -273,6 +275,86 @@ public class FoliageResolverTest {
             assertEquals(1, calls[0]);
         }
         assertSame(SOLID, BlockAppearanceProviders.resolve(world, 0, 0, 0, SOLID, 0).block);
+    }
+
+    @Test
+    public void headOnlyFoliageRustlesWithoutFootContactAndRespectsActorMap() {
+        TestWorld world = new TestWorld();
+        world.put(0, 2, 0, FOLIAGE, 0);
+        EntityCow cow = actor(world);
+        cow.boundingBox.setBounds(0.1, 1, 0.1, 0.9, 2.8, 0.9);
+        SurfaceResolver resolver = new SurfaceResolver(
+            materials("{\"test:foliage.foliage\":\"brush\"}", "{\"test:foliage.foliage\":\"NOT_EMITTER\"}"));
+        SurfaceResolver.Surface floor = new SurfaceResolver.Surface("stone", null, null, 0, 1, 0, 0, 0, true, false);
+        assertNull(resolver.contactFoliage(cow, floor, ""));
+        assertEquals("brush", resolver.bodyFoliage(cow, ""));
+        assertNull(resolver.bodyFoliage(cow, "hooves"));
+        world.put(0, 2, 0, SOLID, 0);
+        resolver = new SurfaceResolver(materials("{\"test:solid_plant.foliage\":\"brush\"}"));
+        assertNull(resolver.bodyFoliage(cow, ""));
+    }
+
+    @Test
+    public void bodyScanDistinguishesLowPlantsFromTallPlantsAndChecksVineBounds() {
+        Block plant = register(391, "test:body_plant", new BodyPlant());
+        TestWorld world = new TestWorld();
+        EntityCow cow = actor(world);
+        cow.boundingBox.setBounds(0.1, 1, 0.1, 0.9, 2.8, 0.9);
+        SurfaceResolver resolver = new SurfaceResolver(materials("{\"test:body_plant.foliage\":\"brush\"}"));
+        world.put(0, 1, 0, plant, 0); // Low plant ends inside boot region.
+        assertNull(resolver.bodyFoliage(cow, ""));
+        world.put(0, 1, 0, plant, 1); // Tall plant reaches above boots.
+        assertEquals("brush", resolver.bodyFoliage(cow, ""));
+        assertEquals(1.0, plant.getBlockBoundsMaxY(), 0.000001); // Shared bounds restored.
+        world.put(0, 1, 0, plant, 2); // Thin wall vine does not touch this actor.
+        assertNull(resolver.bodyFoliage(cow, ""));
+        cow.boundingBox.setBounds(0.02, 1, 0.1, 0.62, 2.8, 0.9);
+        assertEquals("brush", resolver.bodyFoliage(cow, ""));
+        world.loaded = false;
+        assertNull(resolver.bodyFoliage(cow, ""));
+    }
+
+    @Test
+    public void doublePlantUpperHalfUsesLowerVariantAndOrphansStaySilent() {
+        Block plant = register(392, "test:double_plant", new BlockDoublePlant() {});
+        TestWorld world = new TestWorld();
+        EntityCow cow = actor(world);
+        cow.boundingBox.setBounds(0.1, 2, 0.1, 0.9, 3, 0.9);
+        cow.posY = 2;
+        SurfaceResolver resolver = new SurfaceResolver(
+            materials(
+                "{\"test:double_plant^2.foliage\":\"brush_straw_transition\",\"test:double_plant^4.foliage\":\"brush\","
+                    + "\"test:double_plant.messy\":\"MESSY_GROUND\"}"));
+        world.put(0, 1, 0, plant, 2);
+        world.put(0, 2, 0, plant, 11);
+        assertEquals("brush_straw_transition", resolver.bodyFoliage(cow, ""));
+        assertEquals("brush_straw_transition", resolver.messyFoliage(cow, ""));
+        world.put(0, 1, 0, plant, 4);
+        assertEquals("brush", resolver.bodyFoliage(cow, ""));
+        world.put(0, 1, 0, AIR, 0);
+        assertNull(resolver.bodyFoliage(cow, ""));
+        world.put(0, 1, 0, plant, 8);
+        assertNull(resolver.bodyFoliage(cow, ""));
+        world.put(0, 1, 0, plant, 6);
+        assertNull(resolver.bodyFoliage(cow, ""));
+    }
+
+    private static final class BodyPlant extends Block {
+
+        BodyPlant() {
+            super(Material.plants);
+        }
+
+        @Override
+        public void setBlockBoundsBasedOnState(IBlockAccess world, int x, int y, int z) {
+            int meta = world.getBlockMetadata(x, y, z);
+            setBlockBounds(0, 0, 0, meta == 2 ? 0.0625F : 1, meta == 0 ? 0.2F : 0.8F, 1);
+        }
+
+        @Override
+        public AxisAlignedBB getCollisionBoundingBoxFromPool(World world, int x, int y, int z) {
+            return null;
+        }
     }
 
     private static final class PartialBlock extends Block {

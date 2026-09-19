@@ -110,5 +110,11 @@
       "type": "basic"
     }
   ],
+  "rustle": {
+    "name": "pf_presence.leaves.leaves_through",
+    "volume": 30.000002,
+    "pitch": 80.0,
+    "type": "basic"
+  },
   "type": "events"
 }

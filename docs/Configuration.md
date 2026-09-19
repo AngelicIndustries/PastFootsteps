@@ -15,12 +15,17 @@ Open **Mods > PastFootsteps > Config**. Ordinary toggles, volumes and budgets us
 
 Disabling the General master restores the prior footstep engine and disables all PF effects. Disabling material sounds restores native/DS surface audio while equipment and prints retain their own switches. Master volume zero mutes PF audio without disabling footprints. Disabling footprints has no effect on sound timing. Unsupported mobs always keep native sounds.
 
-`effects.foliage` and `volume.foliage` control the additional vegetation layer. Barefoot movement rustles plants at
-foot contacts; wearing any boots suppresses walking rustles, while sprinting restores the contact layer. Plants
-marked `MESSY_GROUND` can also rustle when entered between footsteps, provided the actor is moving, not sneaking,
-and not wearing boots. Standing still adds no entry rustle. Swimming uses marked vegetation at the swimmer's feet.
-The same foliage acoustic is emitted at most once per actor tick, including simultaneous feet and entry detection.
-These rules affect the added foliage layer; surface acoustics can still contain their own authored vegetation sounds.
+`effects.foliage` and `volume.foliage` control the additional vegetation layer. Boots suppress the low foot-contact
+layer while walking; sprinting restores it. Marked `MESSY_GROUND` plants can also create foot-level entry rustles
+when moving without boots or sneaking. Vegetation touching the legs, torso or head above the footwear region
+still rustles while moving with boots. This includes tall grass and vines touched only by the head.
+
+Body rustles use the existing gait contacts plus entry detection, without another stride timer. Standing still
+and sneaking do not produce body rustles. Body scanning uses bounded samples, each plant's current bounds and
+the actor's size. The footwear region is the lower quarter of the actor's height, capped at 0.35 blocks.
+Swimming can layer marked low vegetation and body vegetation on its existing strokes. Foot, body, swimming and
+entry rustles share per-actor acoustic deduplication. Leaf/vine body contacts use pure leaf rustling without the
+dirt-step layer. Normal ground/climbing sounds remain unchanged.
 
 Swimming uses dedicated water/lava acoustics, with stroke volume following movement in any direction, including vertical movement. Other swimmers are quieter than your own strokes. Supported shallow-water wading keeps the surface and wet layers; swimming skips those dry surface sounds. `effects.swimming=false` restores vanilla or Dynamic Surroundings swimming audio, while `volume.swimming=0` mutes PF's owned swimming channel. Underwater ambience and AET's water-entry splashes remain separate.
 
@@ -37,3 +42,5 @@ PF movement samples obey Minecraft's Players, Friendly Creatures or Hostile Crea
 Delayed layers and distance arrivals use bounded queues and discard stale sounds after stalls. Actor removal, teleport, world changes and resource reloads cancel pending sounds. Singleplayer pause clears pending audio so it does not resume after the menu closes. The normal per-tick sound budget also applies when delayed sounds start.
 
 JSON overrides are documented in [Resource packs](Resource-packs.md), [Footprints](Footprints.md), [Equipment](Equipment.md) and [Support surfaces](Support-surfaces.md). Files are not copied from AET automatically. Use `/pf status` for the focused actor, `/pf reload` after JSON edits, and `/pf report` to save `config/pastfootsteps/diagnostics/latest-report.json` for debugging.
+
+Use `/pf mappings all` or `/pf mappings unmapped` to inspect registered block mappings. See [Diagnostics](Diagnostics.md) for named maps, output files and report limitations.

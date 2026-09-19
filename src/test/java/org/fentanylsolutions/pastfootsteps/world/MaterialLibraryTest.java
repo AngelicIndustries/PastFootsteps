@@ -1,9 +1,12 @@
 package org.fentanylsolutions.pastfootsteps.world;
 
 import static org.junit.Assert.assertEquals;
+import static org.junit.Assert.assertFalse;
+import static org.junit.Assert.assertNotNull;
 import static org.junit.Assert.assertNull;
 import static org.junit.Assert.assertSame;
 import static org.junit.Assert.assertTrue;
+import static org.junit.Assert.fail;
 
 import java.io.ByteArrayInputStream;
 import java.io.File;
@@ -17,6 +20,7 @@ import java.util.Arrays;
 import java.util.Collections;
 import java.util.HashMap;
 import java.util.HashSet;
+import java.util.LinkedHashMap;
 import java.util.List;
 import java.util.Map;
 import java.util.Set;
@@ -35,9 +39,14 @@ import net.minecraftforge.oredict.OreDictionary;
 
 import org.fentanylsolutions.pastfootsteps.api.BlockMaterial;
 import org.fentanylsolutions.pastfootsteps.api.DerivedBlock;
+import org.fentanylsolutions.pastfootsteps.sound.SoundEngine;
 import org.junit.Rule;
 import org.junit.Test;
 import org.junit.rules.TemporaryFolder;
+
+import com.google.gson.JsonArray;
+import com.google.gson.JsonObject;
+import com.google.gson.JsonParser;
 
 public class MaterialLibraryTest {
 
@@ -448,6 +457,202 @@ public class MaterialLibraryTest {
         assertSame(base.stepSound, association.sound);
     }
 
+    @Test
+    public void mappingReportGroupsMetadataAndReportsChannelsAndMissingAcoustics() {
+        Block block = register(520, "test:report_channels", new TestBlock());
+        Resources resources = new Resources();
+        resources.add(
+            "config/blockmap.json",
+            "{\"test:report_channels\":\"known\",\"test:report_channels^1\":\"missing_component\","
+                + "\"test:report_channels.carpet\":\"carpet\",\"test:report_channels.foliage\":\"foliage\","
+                + "\"test:report_channels.messy\":\"messy\",\"test:report_channels.wet\":\"wet\","
+                + "\"test:report_channels.bigger\":\"bigger\"}");
+        MaterialLibrary library = load(resources);
+        SoundEngine sound = acoustics("known", "carpet", "foliage", "messy", "wet", "bigger");
+        Map<String, Block> blocks = Collections.singletonMap("test:report_channels", block);
+
+        JsonObject root = MappingReport.create(library, sound, "", false, blocks);
+        JsonObject item = block(root, "test:report_channels");
+        JsonArray states = item.getAsJsonArray("states");
+        assertEquals(2, states.size());
+
+        JsonObject ordinary = null;
+        JsonObject overridden = null;
+        for (int i = 0; i < states.size(); i++) {
+            JsonObject state = states.get(i)
+                .getAsJsonObject();
+            JsonArray metadata = state.getAsJsonArray("metadata");
+            if (metadata.size() == 1 && metadata.get(0)
+                .getAsInt() == 1) overridden = state;
+            else ordinary = state;
+        }
+        assertNotNull(ordinary);
+        assertNotNull(overridden);
+        assertTrue(
+            ordinary.getAsJsonArray("metadata")
+                .toString()
+                .contains("0"));
+        assertTrue(
+            ordinary.getAsJsonArray("metadata")
+                .toString()
+                .contains("15"));
+        JsonObject resolution = ordinary.getAsJsonObject("resolution");
+        for (String channel : new String[] { "normal", "carpet", "foliage", "messy", "wet", "bigger" })
+            assertTrue(channel, resolution.has(channel));
+        assertEquals(
+            "known",
+            resolution.getAsJsonObject("normal")
+                .get("acoustic")
+                .getAsString());
+
+        JsonObject overriddenResolution = overridden.getAsJsonObject("resolution");
+        assertEquals(
+            "missing_component",
+            overriddenResolution.getAsJsonObject("normal")
+                .get("acoustic")
+                .getAsString());
+        assertTrue(
+            overriddenResolution.getAsJsonObject("normal")
+                .has("missingAcoustics"));
+        assertTrue(
+            overriddenResolution.get("needsMapping")
+                .getAsBoolean());
+    }
+
+    @Test
+    public void unmappedReportDistinguishesFallbacksFromIntentionalMappingsAndBaseOrigin() {
+        Block mapped = register(521, "test:report_mapped", new TestBlock());
+        Block silent = register(522, "test:report_silent", new TestBlock());
+        Block vanilla = register(523, "test:report_vanilla", new TestBlock());
+        Block primitive = register(524, "test:report_primitive", new TestBlock());
+        Block nativeBlock = register(525, "test:report_native", new TestBlock(Block.soundTypeAnvil));
+        Block primitiveSilent = register(529, "test:report_primitive_silent", new TestBlock(Block.soundTypeWood));
+        Block primitiveVanilla = register(530, "test:report_primitive_vanilla", new TestBlock(Block.soundTypeGrass));
+        Block base = register(526, "test:report_base", new TestBlock());
+        Block derived = register(527, "test:report_derived", new DerivedTestBlock(base, false, 5));
+        Resources resources = new Resources();
+        resources.add(
+            "config/blockmap.json",
+            "{\"test:report_mapped\":\"known\",\"test:report_silent\":\"NOT_EMITTER\","
+                + "\"test:report_vanilla\":\"VANILLA\",\"test:report_base^5\":\"known_base\"}");
+        resources.add(
+            "config/primitivemap.json",
+            "{\"stone\":\"known_primitive\",\"wood\":\"NOT_EMITTER\",\"grass\":\"VANILLA\"}");
+        MaterialLibrary library = load(resources);
+        SoundEngine sound = acoustics("known", "known_base", "known_primitive");
+        Map<String, Block> blocks = new LinkedHashMap<>();
+        blocks.put("test:report_mapped", mapped);
+        blocks.put("test:report_silent", silent);
+        blocks.put("test:report_vanilla", vanilla);
+        blocks.put("test:report_primitive", primitive);
+        blocks.put("test:report_native", nativeBlock);
+        blocks.put("test:report_primitive_silent", primitiveSilent);
+        blocks.put("test:report_primitive_vanilla", primitiveVanilla);
+        blocks.put("test:report_base", base);
+        blocks.put("test:report_derived", derived);
+
+        JsonObject unmapped = MappingReport.create(library, sound, "", true, blocks);
+        assertNull(block(unmapped, "test:report_mapped"));
+        assertNull(block(unmapped, "test:report_silent"));
+        assertNull(block(unmapped, "test:report_vanilla"));
+        JsonObject primitiveReport = block(unmapped, "test:report_primitive");
+        assertNotNull(primitiveReport);
+        assertEquals(
+            "PRIMITIVE",
+            primitiveReport.getAsJsonArray("states")
+                .get(0)
+                .getAsJsonObject()
+                .getAsJsonObject("resolution")
+                .getAsJsonObject("normal")
+                .get("source")
+                .getAsString());
+        assertNotNull(block(unmapped, "test:report_native"));
+        assertNull(block(unmapped, "test:report_primitive_silent"));
+        assertNull(block(unmapped, "test:report_primitive_vanilla"));
+        assertNull(block(unmapped, "test:report_derived"));
+
+        JsonObject all = MappingReport.create(library, sound, "", false, blocks);
+        JsonObject derivedReport = block(all, "test:report_derived");
+        JsonObject derivedResolution = derivedReport.getAsJsonArray("states")
+            .get(0)
+            .getAsJsonObject()
+            .getAsJsonObject("resolution")
+            .getAsJsonObject("normal");
+        assertEquals(
+            "BASE_BLOCK",
+            derivedResolution.get("source")
+                .getAsString());
+        assertEquals(
+            "test:report_base",
+            derivedResolution.get("sourceBlock")
+                .getAsString());
+        assertEquals(
+            5,
+            derivedResolution.get("sourceMetadata")
+                .getAsInt());
+        JsonArray allBlocks = all.getAsJsonArray("blocks");
+        String previous = "";
+        for (int i = 0; i < allBlocks.size(); i++) {
+            String current = allBlocks.get(i)
+                .getAsJsonObject()
+                .get("block")
+                .getAsString();
+            assertTrue(previous, previous.isEmpty() || previous.compareTo(current) < 0);
+            previous = current;
+        }
+    }
+
+    @Test
+    public void mappingReportUsesNamedMapAndRejectsUnknownMap() {
+        Block block = register(528, "test:report_named", new TestBlock());
+        Resources resources = new Resources();
+        resources.add("config/blockmap.json", "{\"test:report_named\":\"shared\"}");
+        resources.add("config/materials/hooves.json", "{\"test:report_named\":\"actor\"}");
+        MaterialLibrary library = new MaterialLibrary();
+        library.reload(resources, null, Collections.singleton("hooves"));
+        SoundEngine sound = acoustics("actor", "shared");
+
+        JsonObject root = MappingReport
+            .create(library, sound, "hooves", false, Collections.singletonMap("test:report_named", block));
+        JsonObject resolution = block(root, "test:report_named").getAsJsonArray("states")
+            .get(0)
+            .getAsJsonObject()
+            .getAsJsonObject("resolution");
+        assertEquals(
+            "actor",
+            resolution.getAsJsonObject("normal")
+                .get("acoustic")
+                .getAsString());
+        assertFalse(resolution.has("wet"));
+
+        try {
+            MappingReport
+                .create(library, sound, "missing", false, Collections.singletonMap("test:report_named", block));
+            fail("unknown material map accepted");
+        } catch (IllegalArgumentException expected) {}
+    }
+
+    private static JsonObject block(JsonObject root, String id) {
+        for (int i = 0; i < root.getAsJsonArray("blocks")
+            .size(); i++) {
+            JsonObject item = root.getAsJsonArray("blocks")
+                .get(i)
+                .getAsJsonObject();
+            if (id.equals(
+                item.get("block")
+                    .getAsString()))
+                return item;
+        }
+        return null;
+    }
+
+    private static SoundEngine acoustics(String... names) {
+        SoundEngine sound = new SoundEngine((name, volume, pitch, context) -> {});
+        JsonParser parser = new JsonParser();
+        for (String name : names) sound.load(name, parser.parse("{\"type\":\"empty\"}"));
+        return sound;
+    }
+
     private static final class TestGroups implements BlockMaterialMap.Groups {
 
         private final Map<String, List<ItemStack>> entries = new HashMap<>();
@@ -499,9 +704,13 @@ public class MaterialLibraryTest {
         private final boolean preserveMetadata;
 
         DerivedTestBlock(Block base, boolean preserveMetadata) {
+            this(base, preserveMetadata, 0);
+        }
+
+        DerivedTestBlock(Block base, boolean preserveMetadata, int baseMetadata) {
             super(Material.rock);
             setStepSound(Block.soundTypeStone);
-            this.base = base == null ? null : new BlockMaterial(base, 0);
+            this.base = base == null ? null : new BlockMaterial(base, baseMetadata);
             this.preserveMetadata = preserveMetadata;
         }
 

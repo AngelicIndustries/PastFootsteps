@@ -186,16 +186,31 @@ between contacts and the vegetation layer while swimming. For example:
 }
 ```
 
-Both lookups honor metadata and the actor's `materialMap`. Set `.messy` to `NOT_EMITTER` to disable entry/swimming
-vegetation while keeping ordinary contact rustles, or `.foliage` to `NOT_EMITTER` to silence that vegetation layer
-entirely. Young crops with non-emitting `.foliage` entries remain silent even when marked messy. Missing `.messy`
-does not disable regular foot-contact foliage, such as rails and vines. Ordinary contacts sample the plant at the
-resolved foot position, excluding solid blocks and the supporting overlay itself; entry detection samples a bounded horizontal area at foot height. It does not rustle plants
-only touching the actor's head. Boots and sprinting follow the rules in [Configuration](Configuration.md).
+Both lookups honor metadata and the actor's `materialMap`. Set `.messy` to `NOT_EMITTER` to disable the extra
+foot-level entry/swimming query while keeping normal contact rustles. `.foliage: NOT_EMITTER` silences that
+vegetation's additional foot and body layers entirely. Ordinary foot contacts exclude solid blocks and the
+supporting overlay itself.
 
-Overlapping comma-separated foliage names, simultaneous feet, and entry/contact detection share per-actor deduplication.
-An entry rustle also waits at least two ticks after the last foliage playback to avoid rapid boundary chatter.
-Explicit layers authored inside surface acoustic definitions are preserved.
+Body contacts also use `.foliage`, without requiring `.messy`. The bounded scan checks current plant bounds
+against the actor above the footwear region. A short plant confined to the boots remains under the foot rules;
+tall grass, reeds and head-height vines can rustle with boots equipped. Solid collision intersecting the body,
+unloaded cells and invalid bounds are excluded. State bounds are restored after querying. Custom plants opt in
+through the same mappings; no registry-name list determines their body eligibility.
+
+For vanilla `BlockDoublePlant` and subclasses, foliage/messy lookup uses the lower half's variant metadata for
+both halves. The lower half must be loaded, the same block, and a valid lower variant. Orphan or malformed upper
+halves remain silent. Map variants `^0` through `^5`; upper-half `^8` through `^15` orientation values no longer
+choose foliage sounds. Built-in fern uses `straw`, tall grass/large fern use `brush_straw_transition`, and rose
+bush uses `brush`, matching the audited MIT mappings.
+
+Body rustles require movement and no sneaking and share existing gait timing. Footwear rules for the low layer
+are described in [Configuration](Configuration.md). Overlapping comma-separated foliage names, simultaneous feet,
+body contacts and entry detection share per-actor deduplication. An entry rustle waits at least two ticks after
+the last foliage playback to avoid boundary chatter. Explicit layers authored inside surface acoustics remain
+unchanged. For body contact, an acoustic may define a `rustle` event to replace its usual gait event. Without
+`rustle`, its normal gait event is retained. Built-in `leaves` and `softleaves` use this event for leaf rustling
+without their dirt-footstep layer, including entry and swimming contacts. Deduplication still uses the original
+acoustic name. Normal ground/climbing playback continues using its ordinary events.
 
 ## Primitive fallback
 
@@ -424,3 +439,5 @@ Client-only multiplayer infers contacts from observed movement. Nearby native so
 when a supported and an unsupported creature overlap, conservative attribution can retain a duplicate native step.
 Optional server synchronization can provide remote contact timing when Past Footsteps is installed on the server;
 see [Server support](Server-support.md).
+
+For a registry-wide view of effective mappings and missing acoustic definitions, use `/pf mappings all` or `/pf mappings unmapped`. Optional named maps and report limitations are covered in [Diagnostics](Diagnostics.md).

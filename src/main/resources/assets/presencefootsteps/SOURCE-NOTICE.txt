@@ -114,3 +114,19 @@ Thin overlay selection follows MIT PFSolver's mapped carpet substrate and
 sub-0.3-block shape check. The 1.7 adapter uses bounded state bounds for
 non-colliding floor coverings, guards unloaded reads, restores shared block
 bounds and intersects decal geometry with the physical support.
+
+Foliage contact-region handling extends the audited MIT footwear strategy:
+body vegetation above the boot region shares the existing gait and acoustic
+claims without being suppressed by boots. Bounds-based body intersection
+and 1.7 double-plant upper/lower metadata resolution are Forge adapter work.
+Fern, tall grass and rose bush mappings follow both audited MIT block maps.
+
+The leaves and softleaves acoustics add a body-only rustle event referencing
+the existing upstream leaf rustle at its original volume/pitch. This local
+adaptation excludes their dirt layer for body brushing without changing the
+upstream ground/climbing event definitions or any recordings.
+
+Registry mapping diagnostics adapt the audited MIT BlockReport/StateLookup
+report concept to Forge 1.7 metadata and the local effective material resolver.
+The command, provenance fields, missing-definition checks and JSON layout are
+local adapter work. Reports do not evaluate world-dependent appearances.

@@ -49,14 +49,21 @@ This adapts upstream's broader native-sound filter to PF's per-actor ownership a
 MIT `PFSolver` and `TerrestrialStepSoundGenerator` distinguish ordinary `.foliage` contacts from the
 `MESSY_FOLIAGE_STRATEGY` entry/swimming query requiring `.messy: MESSY_GROUND`. The Forge adapter uses physical
 foot contacts for ordinary lookup and a bounded scan at foot height for marked vegetation. All lookups use the
-selected per-entity material map. Any equipped boots suppress ordinary walking foliage; the sprint state restores
-contact foliage. Extra entry rustles require horizontal motion, no sneaking and no boots. The swimming vegetation
+selected per-entity material map. Any equipped boots suppress the low foot-contact walking layer; the sprint state restores
+contact foliage. Low entry rustles require movement, no sneaking and no boots. The swimming vegetation
 path uses the messy marker without the ordinary footwear gate, matching the upstream separate swimming branch.
 
 PF keeps its shared contact timing. Per-actor acoustic-name claims suppress duplicate foliage within a tick,
 including simultaneous feet and entry/step overlap. Entry detection uses a two-tick cooldown in place of upstream's
 100 ms polling, tracks occupancy even while muted, and baselines on actor generation changes so teleports and
 support changes do not become entries. Distinct acoustic names can still layer; authored surface sounds are unchanged.
+
+PF additionally restores body-contact rustling above the footwear region, including head-only vines and tall
+vegetation while wearing boots. This extends the audited MIT blanket footwear gate. Body and foot entries track
+occupancy separately but claim acoustic names together; body playback uses the existing gait/stroke contacts,
+requires movement and no sneaking, and resets with the actor generation. Bounds and collision intersection keep
+low plants and nearby untouched vines out of the body layer. Double-plant upper halves resolve the loaded lower
+variant. Fern, tall-grass and rose-bush mappings now follow the audited MIT assets.
 
 ## Materials and biome variance
 

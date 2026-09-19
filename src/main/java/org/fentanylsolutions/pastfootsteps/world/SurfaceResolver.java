@@ -8,6 +8,7 @@ import java.util.Set;
 
 import net.minecraft.block.Block;
 import net.minecraft.block.BlockCarpet;
+import net.minecraft.block.BlockDoublePlant;
 import net.minecraft.block.BlockSnow;
 import net.minecraft.block.material.Material;
 import net.minecraft.client.resources.IResourceManager;
@@ -480,8 +481,8 @@ public final class SurfaceResolver {
         }
         if (!world.blockExists(x, y, z) || x == surface.x && y == surface.y && z == surface.z) return null;
         Block block = world.getBlock(x, y, z);
-        BlockMaterial appearance = BlockAppearanceProviders
-            .resolve(world, x, y, z, block, world.getBlockMetadata(x, y, z));
+        BlockMaterial appearance = foliageAppearance(world, x, y, z, block);
+        if (appearance == null) return null;
         String name = materials.lookup(appearance.block, appearance.metadata, "foliage", materialMap);
         if (!emitter(name)) return null;
         float minX = (float) block.getBlockBoundsMinX(), minY = (float) block.getBlockBoundsMinY(),
@@ -507,7 +508,7 @@ public final class SurfaceResolver {
 
     /** Only vegetation explicitly marked MESSY_GROUND can produce a between-contact entry rustle. */
     public String messyFoliage(EntityLivingBase actor, String materialMap) {
-        return scanFoliage(actor, materialMap, true);
+        return scanFoliage(actor, materialMap, true, false);
     }
 
     public String foliage(EntityLivingBase actor) {
@@ -515,10 +516,15 @@ public final class SurfaceResolver {
     }
 
     public String foliage(EntityLivingBase actor, String materialMap) {
-        return scanFoliage(actor, materialMap, false);
+        return scanFoliage(actor, materialMap, false, false);
     }
 
-    private String scanFoliage(EntityLivingBase actor, String materialMap, boolean messyOnly) {
+    /** Mapped vegetation physically intersecting the legs, torso or head above the boot region. */
+    public String bodyFoliage(EntityLivingBase actor, String materialMap) {
+        return scanFoliage(actor, materialMap, false, true);
+    }
+
+    private String scanFoliage(EntityLivingBase actor, String materialMap, boolean messyOnly, boolean bodyOnly) {
         if (actor == null || actor.worldObj == null
             || actor.boundingBox == null
             || !validWorldCoordinate(actor.boundingBox.minX)
@@ -529,11 +535,15 @@ public final class SurfaceResolver {
             || !validWorldCoordinate(actor.boundingBox.maxZ)) return null;
         Set<String> names = new LinkedHashSet<String>();
         AxisAlignedBB body = actor.boundingBox;
+        if (body.minX >= body.maxX || body.minY >= body.maxY || body.minZ >= body.maxZ) return null;
+        double bootHeight = Math.min(0.35D, (body.maxY - body.minY) * 0.25D);
+        AxisAlignedBB upperBody = AxisAlignedBB
+            .getBoundingBox(body.minX, body.minY + bootHeight, body.minZ, body.maxX, body.maxY, body.maxZ);
         World world = actor.worldObj;
         int[] xs = sampleCells(body.minX + 0.01D, body.maxX - 0.01D, FOLIAGE_HORIZONTAL_SAMPLES);
         int feetCell = floor(body.minY + 0.01D), aboveSupport = floor(body.minY - 0.1D) + 1;
         int[] ys = messyOnly ? feetCell == aboveSupport ? new int[] { feetCell } : new int[] { feetCell, aboveSupport }
-            : sampleCells(body.minY + 0.01D, body.maxY - 0.01D, FOLIAGE_VERTICAL_SAMPLES);
+            : sampleCells((bodyOnly ? upperBody.minY : body.minY) + 0.01D, body.maxY - 0.01D, FOLIAGE_VERTICAL_SAMPLES);
         int[] zs = sampleCells(body.minZ + 0.01D, body.maxZ - 0.01D, FOLIAGE_HORIZONTAL_SAMPLES);
         for (int x : xs) {
             for (int z : zs) {
@@ -541,17 +551,66 @@ public final class SurfaceResolver {
                     if (x < -30000000 || x >= 30000000 || z < -30000000 || z >= 30000000) continue;
                     if (!world.blockExists(x, y, z)) continue;
                     Block block = world.getBlock(x, y, z);
-                    int meta = world.getBlockMetadata(x, y, z);
-                    BlockMaterial appearance = BlockAppearanceProviders.resolve(world, x, y, z, block, meta);
+                    BlockMaterial appearance = foliageAppearance(world, x, y, z, block);
+                    if (appearance == null) continue;
                     if (messyOnly && !"MESSY_GROUND"
                         .equals(materials.lookup(appearance.block, appearance.metadata, "messy", materialMap)))
                         continue;
                     String name = materials.lookup(appearance.block, appearance.metadata, "foliage", materialMap);
-                    if (emitter(name)) names.add(name);
+                    if (emitter(name) && (!bodyOnly || touchesBody(actor, block, x, y, z, upperBody))) names.add(name);
                 }
             }
         }
         return names.isEmpty() ? null : String.join(",", names);
+    }
+
+    /** Double-plant upper metadata describes orientation, not the plant variant. */
+    private static BlockMaterial foliageAppearance(World world, int x, int y, int z, Block block) {
+        int meta = world.getBlockMetadata(x, y, z);
+        BlockMaterial appearance = BlockAppearanceProviders.resolve(world, x, y, z, block, meta);
+        if (appearance.block != block || !(block instanceof BlockDoublePlant)) return appearance;
+        if ((meta & 8) != 0) {
+            if (!world.blockExists(x, y - 1, z) || world.getBlock(x, y - 1, z) != block) return null;
+            meta = world.getBlockMetadata(x, y - 1, z);
+        }
+        if ((meta & 8) != 0 || (meta & 7) > 5) return null;
+        return new BlockMaterial(block, meta & 7);
+    }
+
+    private boolean touchesBody(EntityLivingBase actor, Block block, int x, int y, int z, AxisAlignedBB body) {
+        float minX = (float) block.getBlockBoundsMinX(), minY = (float) block.getBlockBoundsMinY(),
+            minZ = (float) block.getBlockBoundsMinZ(), maxX = (float) block.getBlockBoundsMaxX(),
+            maxY = (float) block.getBlockBoundsMaxY(), maxZ = (float) block.getBlockBoundsMaxZ();
+        try {
+            block.setBlockBoundsBasedOnState(new LoadedBlockAccess(actor.worldObj), x, y, z);
+            double lowX = block.getBlockBoundsMinX(), lowY = block.getBlockBoundsMinY(),
+                lowZ = block.getBlockBoundsMinZ(), highX = block.getBlockBoundsMaxX(),
+                highY = block.getBlockBoundsMaxY(), highZ = block.getBlockBoundsMaxZ();
+            if (!finite(lowX) || !finite(lowY)
+                || !finite(lowZ)
+                || !finite(highX)
+                || !finite(highY)
+                || !finite(highZ)
+                || lowX < 0
+                || lowY < 0
+                || lowZ < 0
+                || highX > 1
+                || highY > 1
+                || highZ > 1
+                || lowX >= highX
+                || lowY >= highY
+                || lowZ >= highZ) return false;
+            AxisAlignedBB visual = AxisAlignedBB
+                .getBoundingBox(x + lowX, y + lowY, z + lowZ, x + highX, y + highY, z + highZ);
+            if (!visual.intersectsWith(body)) return false;
+            collisionBoxes.clear();
+            block.addCollisionBoxesToList(actor.worldObj, x, y, z, body, collisionBoxes, actor);
+            return collisionBoxes.isEmpty();
+        } catch (RuntimeException | LinkageError ignored) {
+            return false;
+        } finally {
+            block.setBlockBounds(minX, minY, minZ, maxX, maxY, maxZ);
+        }
     }
 
     public static boolean emitter(String name) {

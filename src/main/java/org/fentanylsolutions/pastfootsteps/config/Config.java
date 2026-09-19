@@ -106,7 +106,7 @@ public final class Config {
             "effects",
             "foliage",
             true,
-            "Rustle vegetation at foot contacts and on entering marked plants. Boots suppress walking rustles; sprinting restores the contact layer. Sneaking suppresses entry rustles.");
+            "Rustle vegetation at foot and body contacts. Boots suppress only the low foot layer; sprinting restores it. Plants touching the legs, torso or head still rustle while moving with boots. Sneaking suppresses body and entry rustles.");
         wet = bool("effects", "wet", true, "Layer wet footsteps in shallow water. Exposed rain has its own settings.");
         swimming = bool(
             "effects",

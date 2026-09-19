@@ -15,23 +15,35 @@ public final class FoliageSounds {
     private long tick = NO_TICK;
     private long lastClaimTick = NO_TICK;
     private boolean observed;
-    private Set<String> previous = new LinkedHashSet<String>();
-    private Set<String> entered = new LinkedHashSet<String>();
+    private Set<String> previousLow = new LinkedHashSet<String>();
+    private Set<String> previousBody = new LinkedHashSet<String>();
+    private Set<String> enteredLow = new LinkedHashSet<String>();
+    private Set<String> enteredBody = new LinkedHashSet<String>();
     private Set<String> emitted = new HashSet<String>();
 
     /** Starts one actor tick. A repeated call for the same generation and tick is ignored. */
     public void begin(long tick, long generation, String messyNames) {
+        begin(tick, generation, messyNames, null);
+    }
+
+    /** Starts one actor tick with low foliage and body foliage tracked as separate entry sources. */
+    public void begin(long tick, long generation, String messyNames, String bodyNames) {
         if (this.tick == tick && this.generation == generation) return;
 
-        Set<String> current = names(messyNames);
+        Set<String> low = names(messyNames);
+        Set<String> body = names(bodyNames);
         boolean reset = !observed || generation != this.generation || tick < this.tick;
-        entered = new LinkedHashSet<String>();
+        enteredLow = new LinkedHashSet<String>();
+        enteredBody = new LinkedHashSet<String>();
         if (reset) lastClaimTick = NO_TICK;
         if (!reset) {
-            entered.addAll(current);
-            entered.removeAll(previous);
+            enteredLow.addAll(low);
+            enteredLow.removeAll(previousLow);
+            enteredBody.addAll(body);
+            enteredBody.removeAll(previousBody);
         }
-        previous = current;
+        previousLow = low;
+        previousBody = body;
         emitted.clear();
         this.tick = tick;
         this.generation = generation;
@@ -50,14 +62,31 @@ public final class FoliageSounds {
 
     /** Claims newly entered names when eligible and outside the foliage re-entry cooldown. */
     public String entry(boolean eligible) {
-        if (!eligible || entered.isEmpty()) return null;
+        return entry(eligible, false, false);
+    }
+
+    /** Claims body entries with the supplied movement gate and low entries only when boots permit them. */
+    public String entry(boolean moving, boolean sneaking, boolean wearingBoots) {
+        if (!moving || sneaking) return null;
         if (lastClaimTick != NO_TICK && tick - lastClaimTick < 2) return null;
-        Set<String> candidates = new LinkedHashSet<String>(entered);
+        Set<String> candidates = new LinkedHashSet<String>(enteredBody);
+        if (!wearingBoots) candidates.addAll(enteredLow);
+        if (candidates.isEmpty()) return null;
         candidates.removeAll(emitted);
         if (candidates.isEmpty()) return null;
         emitted.addAll(candidates);
         lastClaimTick = tick;
         return join(candidates);
+    }
+
+    /** Plays claimed names with an optional body-only event, retaining their original deduplication keys. */
+    public static void playClaimed(SoundEngine sound, String claimedNames, String bodyNames, String event,
+        AcousticContext context) {
+        Set<String> body = names(bodyNames);
+        for (String name : names(claimedNames)) {
+            String selected = body.contains(name) && sound.canPlay(name, "rustle") ? "rustle" : event;
+            sound.play(name, selected, context);
+        }
     }
 
     public static boolean contactAllowed(boolean wearingBoots, boolean sprinting) {
