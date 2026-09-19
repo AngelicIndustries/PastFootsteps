@@ -35,21 +35,22 @@
  */
 dependencies {
     // Pure runtime
-    runtimeOnlyNonPublishable("com.github.GTNewHorizons:Hodgepodge:2.7.195:dev")
-    runtimeOnlyNonPublishable("com.github.GTNewHorizons:NotEnoughItems:2.8.130-GTNH:dev")
+    runtimeOnlyNonPublishable("com.github.GTNewHorizons:Hodgepodge:2.7.209:dev")
+    runtimeOnlyNonPublishable("com.github.GTNewHorizons:NotEnoughItems:2.8.144-GTNH:dev")
     runtimeOnlyNonPublishable(rfg.deobf("curse.maven:catalogue-vintage-1465746:8384975")) // 1.0.8-1.7.10
-    runtimeOnlyNonPublishable("com.github.GTNewHorizons:Angelica:2.2.9:dev")
+    runtimeOnlyNonPublishable("com.github.GTNewHorizons:Angelica:2.2.15:dev")
     runtimeOnlyNonPublishable("dev.dediamondpro.resourcify:VintageResourcify:1.0.5:dev")
     runtimeOnlyNonPublishable("org.fentanylsolutions.vrap:vrap:1.0.1:dev")
     runtimeOnlyNonPublishable("com.falsepattern:forgelin-mc1.7.10:2.4.3-2.4.10")
 
     runtimeOnlyNonPublishable("org.fentanylsolutions.fentlib:FentLib:04136bd-snapshot:dev")
-    runtimeOnlyNonPublishable("com.github.GTNewHorizons:ModularUI2:2.3.90-1.7.10:dev")
+    runtimeOnlyNonPublishable("com.github.GTNewHorizons:ModularUI2:2.3.91-1.7.10:dev")
 
     // Local AET build for testing the walking-feature migration together.
     runtimeOnlyNonPublishable(files("../AnExtraTouch/build/libs/anextratouch-0.0.13-dev.jar"))
 
     // Compile + runtime
+    implementation(rfg.deobf("maven.modrinth:dynamic-surroundings-unofficial-1.7.10:1.0.8.0"))
 
     // Pure compile
 
