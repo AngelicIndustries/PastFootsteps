@@ -75,6 +75,12 @@ public final class SurfaceResolver {
     /** Resolves a contact around an explicit, possibly interpolated, actor position. */
     public Surface resolveAt(EntityLivingBase actor, double centerX, double feetY, double centerZ, double lateralOffset,
         double forwardOffset) {
+        return resolveAt(actor, centerX, feetY, centerZ, lateralOffset, forwardOffset, "");
+    }
+
+    /** Resolves a contact using the material map selected by the actor's profile. */
+    public Surface resolveAt(EntityLivingBase actor, double centerX, double feetY, double centerZ, double lateralOffset,
+        double forwardOffset, String materialMap) {
         if (actor == null || actor.worldObj == null
             || actor.boundingBox == null
             || !finite(centerX)
@@ -136,12 +142,12 @@ public final class SurfaceResolver {
                         if (score >= bestScore) continue;
 
                         int meta = world.getBlockMetadata(x, y, z);
-                        String name = materials.lookup(block, meta, "carpet");
+                        String name = materials.lookup(block, meta, "carpet", materialMap);
                         if (name == null || !emitter(name)) {
-                            name = materials.lookup(block, meta, box.maxY > y + 1.01D ? "bigger" : "");
-                            if (name == null) name = materials.lookup(block, meta, "");
+                            name = materials.lookup(block, meta, box.maxY > y + 1.01D ? "bigger" : "", materialMap);
+                            if (name == null) name = materials.lookup(block, meta, "", materialMap);
                         }
-                        String wet = materials.lookup(block, meta, "wet");
+                        String wet = materials.lookup(block, meta, "wet", materialMap);
                         if (wet == null) wet = "mudfine,splash";
                         boolean exposed = !submerged && world.isRaining()
                             && world.canBlockSeeTheSky(x, floor(feetY + 0.1D), z)
@@ -176,8 +182,8 @@ public final class SurfaceResolver {
             int x = floor(actor.posX), y = floor(actor.boundingBox.minY), z = floor(actor.posZ);
             if (world.blockExists(x, y, z)) {
                 Block block = world.getBlock(x, y, z);
-                String name = materials.lookup(block, world.getBlockMetadata(x, y, z), "");
-                if (!emitter(name)) name = "ladder";
+                String name = materials.lookup(block, world.getBlockMetadata(x, y, z), "", materialMap);
+                if (name == null) name = "ladder";
                 return new Surface(
                     name,
                     null,
@@ -194,7 +200,7 @@ public final class SurfaceResolver {
                     clamp(footZ, z, z + 1.0D));
             }
         }
-        if (best != null) return overlaySurface(world, footX, footZ, best);
+        if (best != null) return overlaySurface(world, footX, footZ, best, materialMap);
 
         Surface entitySupport = resolveEntitySupport(actor, probe, footX, feetY, footZ);
         if (entitySupport != null) return entitySupport;
@@ -224,7 +230,7 @@ public final class SurfaceResolver {
      * Snow layers and carpets in 1.7 have a visual top above their collision top. Their material
      * belongs to the contact, while tracker physics keeps the real collision height.
      */
-    private Surface overlaySurface(World world, double footX, double footZ, Surface physical) {
+    private Surface overlaySurface(World world, double footX, double footZ, Surface physical, String materialMap) {
         int x = floor(footX), z = floor(footZ);
         int y = floor(physical.contactY + OVERLAY_EPSILON);
         if (!world.blockExists(x, y, z)) return physical;
@@ -235,10 +241,10 @@ public final class SurfaceResolver {
         double collisionTop = overlay instanceof BlockSnow ? y + (meta & 7) * 0.125D : y;
         if (Math.abs(physical.contactY - collisionTop) > OVERLAY_EPSILON
             && Math.abs(physical.contactY - y) > OVERLAY_EPSILON) return physical;
-        String material = materials.lookup(overlay, meta, overlay instanceof BlockCarpet ? "carpet" : "");
-        if (!emitter(material)) material = materials.lookup(overlay, meta, "");
+        String material = materials.lookup(overlay, meta, overlay instanceof BlockCarpet ? "carpet" : "", materialMap);
+        if (!emitter(material)) material = materials.lookup(overlay, meta, "", materialMap);
         if (!emitter(material)) return physical;
-        String wet = materials.lookup(overlay, meta, "wet");
+        String wet = materials.lookup(overlay, meta, "wet", materialMap);
         Block.SoundType step = overlay.stepSound;
         return new Surface(
             material,
@@ -382,6 +388,10 @@ public final class SurfaceResolver {
     }
 
     public String foliage(EntityLivingBase actor) {
+        return foliage(actor, "");
+    }
+
+    public String foliage(EntityLivingBase actor, String materialMap) {
         if (actor == null || actor.worldObj == null || actor.boundingBox == null) return null;
         Set<String> names = new LinkedHashSet<String>();
         AxisAlignedBB body = actor.boundingBox;
@@ -394,7 +404,8 @@ public final class SurfaceResolver {
                 for (int y : ys) {
                     if (x < -30000000 || x >= 30000000 || z < -30000000 || z >= 30000000) continue;
                     if (!world.blockExists(x, y, z)) continue;
-                    String name = materials.lookup(world.getBlock(x, y, z), world.getBlockMetadata(x, y, z), "foliage");
+                    String name = materials
+                        .lookup(world.getBlock(x, y, z), world.getBlockMetadata(x, y, z), "foliage", materialMap);
                     if (emitter(name)) names.add(name);
                 }
             }

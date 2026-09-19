@@ -55,6 +55,12 @@ Each PF sample carries its actor's player/neutral/hostile category through conte
 A scoped SoundManager mixin uses it for initial playback, live slider changes and channel cleanup. Shared sound
 definitions, namespaced pack resources, sample variation, mono routing and non-PF playback keep their existing paths.
 
+MIT Isolator's per-entity block maps are adapted to inherited PF profile `materialMap` IDs, allowing exact,
+age/variant and explicit class selectors to share maps. Referenced maps load at resource/local reload; contact
+resolution uses immutable snapshots. Missing actor entries use the shared block map. Explicit `UNASSIGNED` skips
+to primitive fallback, while non-emitter and vanilla markers remain distinct. Map paths and profile selection
+are PF-specific; upstream modern entity registry paths are not loaded automatically.
+
 Material maps continue to use 1.7 block registry names and metadata. The reader also accepts vanilla block keys without
 the `minecraft:` prefix and modern PF primitive spellings such as `minecraft:block.stone.step`. Modern block-state/tag
 selectors cannot be translated reliably to 1.7 metadata and are not supported.

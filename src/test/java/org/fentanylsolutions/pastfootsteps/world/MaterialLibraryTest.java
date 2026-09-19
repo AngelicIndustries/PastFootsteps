@@ -12,8 +12,10 @@ import java.lang.reflect.Method;
 import java.nio.charset.StandardCharsets;
 import java.nio.file.Files;
 import java.util.ArrayList;
+import java.util.Arrays;
 import java.util.Collections;
 import java.util.HashMap;
+import java.util.HashSet;
 import java.util.List;
 import java.util.Map;
 import java.util.Set;
@@ -116,6 +118,97 @@ public class MaterialLibraryTest {
         assertTrue(local.delete());
         library.reload(resources, temporary.getRoot());
         assertEquals("pack", library.lookup(STONE, 0, ""));
+    }
+
+    @Test
+    public void explicitUnassignedSkipsTheBlockMapWithoutRevivingGenericOrLowerEntries() {
+        Resources resources = new Resources();
+        resources.add("config/blockmap.json", "{\"test:stone\":\"generic\",\"test:stone^1\":\"lower\"}");
+        resources.add(
+            "config/blockmap.json",
+            "{\"test:stone^1\":\" unassigned # reset \",\"test:stone.wet\":\"UNASSIGNED\"}");
+        resources.add("config/primitivemap.json", "{\"stone\":\"primitive\"}");
+        MaterialLibrary library = load(resources);
+        assertEquals("primitive", library.lookup(STONE, 1, ""));
+        assertEquals("generic", library.lookup(STONE, 0, ""));
+        assertNull(library.lookup(STONE, 1, "wet"));
+    }
+
+    @Test
+    public void primitiveUnassignedReturnsNativeFallbackWhileSilenceRemainsAssigned() {
+        Resources resources = new Resources();
+        resources.add(
+            "config/blockmap.json",
+            "{\"test:stone\":\"non_emitter\",\"test:stone^1\":\"VaNiLlA\",\"test:stone^2\":\"WOOD\"}");
+        resources.add("config/primitivemap.json", "{\"stone@1.00_1.00\":\"UNASSIGNED\",\"stone\":\"generic\"}");
+        MaterialLibrary library = load(resources);
+        assertNull(library.lookup(COBBLESTONE, 0, ""));
+        assertEquals("NOT_EMITTER", library.lookup(STONE, 0, ""));
+        assertEquals("VANILLA", library.lookup(STONE, 1, ""));
+        assertEquals("wood", library.lookup(STONE, 2, ""));
+    }
+
+    @Test
+    public void actorMapsOverrideSharedSpecificityAndKeepMissingSubstratesShared() {
+        Resources resources = new Resources();
+        resources.add(
+            "config/blockmap.json",
+            "{\"test:stone^1\":\"global-meta\",\"test:stone\":\"global\",\"test:stone.wet\":\"splash\",\"test:stone.foliage\":\"brush\"}");
+        resources.add(
+            "config/materials/hooves.json",
+            "{\"test:stone\":\"hoof\",\"test:stone^2\":\"hoof-meta\",\"test:stone.foliage\":\"NOT_EMITTER\"}");
+        resources.add("config/materials/paws.json", "{\"test:stone\":\"paw\"}");
+        MaterialLibrary library = new MaterialLibrary();
+        library.reload(resources, null, new HashSet<>(Arrays.asList("hooves", "paws", "missing")));
+        assertEquals("hoof", library.lookup(STONE, 1, "", "hooves"));
+        assertEquals("hoof-meta", library.lookup(STONE, 2, "", "hooves"));
+        assertEquals("paw", library.lookup(STONE, 1, "", "paws"));
+        assertEquals("global-meta", library.lookup(STONE, 1, ""));
+        assertEquals("global-meta", library.lookup(STONE, 1, "", "missing"));
+        assertEquals("splash", library.lookup(STONE, 0, "wet", "hooves"));
+        assertEquals("NOT_EMITTER", library.lookup(STONE, 0, "foliage", "hooves"));
+        assertEquals("brush", library.lookup(STONE, 0, "foliage", "paws"));
+    }
+
+    @Test
+    public void actorUnassignedUsesPrimitiveWhileExplicitSilenceAndNativeStopLookup() {
+        Resources resources = new Resources();
+        resources.add("config/blockmap.json", "{\"test:stone\":\"global\",\"test:stone.wet\":\"splash\"}");
+        resources.add("config/primitivemap.json", "{\"stone\":\"primitive\"}");
+        resources.add(
+            "config/materials/hooves.json",
+            "{\"test:stone\":\"UNASSIGNED\",\"test:stone^1\":\"NOT_EMITTER\",\"test:stone^2\":\"VANILLA\",\"test:stone.wet\":\"UNASSIGNED\"}");
+        MaterialLibrary library = new MaterialLibrary();
+        library.reload(resources, null, Collections.singleton("hooves"));
+        assertEquals("primitive", library.lookup(STONE, 0, "", "hooves"));
+        assertEquals("NOT_EMITTER", library.lookup(STONE, 1, "", "hooves"));
+        assertEquals("VANILLA", library.lookup(STONE, 2, "", "hooves"));
+        assertNull(library.lookup(STONE, 0, "wet", "hooves"));
+        assertEquals("global", library.lookup(STONE, 0, ""));
+    }
+
+    @Test
+    public void actorLocalLayersReloadAtomicallyAndDeletionRestoresPacks() throws Exception {
+        Resources resources = new Resources();
+        resources.add("config/blockmap.json", "{\"test:stone\":\"shared\"}");
+        resources.add("config/materials/hooves.json", "{\"test:stone\":\"pack\"}");
+        resources.add("config/materials/hooves.json", "{\"test:stone\":\"should-not-leak\",\"test:cobblestone\":12}");
+        File folder = temporary.newFolder("profiles", "materials");
+        File file = new File(folder, "hooves.json");
+        MaterialLibrary library = new MaterialLibrary();
+        library.reload(resources, temporary.getRoot(), Collections.singleton("hooves"));
+        assertEquals("pack", library.lookup(STONE, 0, "", "hooves"));
+        Files.write(file.toPath(), "{\"test:stone\":\"local\"}".getBytes(StandardCharsets.UTF_8));
+        library.reload(resources, temporary.getRoot(), Collections.singleton("hooves"));
+        assertEquals("local", library.lookup(STONE, 0, "", "hooves"));
+        Files.write(file.toPath(), "{\"test:stone\":12}".getBytes(StandardCharsets.UTF_8));
+        library.reload(resources, temporary.getRoot(), Collections.singleton("hooves"));
+        assertEquals("local", library.lookup(STONE, 0, "", "hooves"));
+        assertTrue(file.delete());
+        library.reload(resources, temporary.getRoot(), Collections.singleton("hooves"));
+        assertEquals("pack", library.lookup(STONE, 0, "", "hooves"));
+        library.reload(resources, temporary.getRoot(), Collections.<String>emptySet());
+        assertEquals("shared", library.lookup(STONE, 0, "", "hooves"));
     }
 
     private static Block register(int id, String name, Block block) {

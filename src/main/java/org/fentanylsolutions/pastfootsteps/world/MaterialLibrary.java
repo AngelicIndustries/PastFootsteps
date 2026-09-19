@@ -10,6 +10,8 @@ import java.util.LinkedHashMap;
 import java.util.List;
 import java.util.Locale;
 import java.util.Map;
+import java.util.Set;
+import java.util.TreeSet;
 
 import net.minecraft.block.Block;
 import net.minecraft.client.resources.IResource;
@@ -54,6 +56,11 @@ public final class MaterialLibrary {
      * suited to small per-installation corrections without repacking the bundled maps.
      */
     public void reload(IResourceManager resources, File directory) {
+        reload(resources, directory, Collections.<String>emptySet());
+    }
+
+    /** Loads only maps referenced by compiled profiles; no resource access occurs during contact resolution. */
+    public void reload(IResourceManager resources, File directory, Set<String> materialMaps) {
         if (resources == null) return;
 
         Map<String, String> blocks = new LinkedHashMap<String, String>();
@@ -65,7 +72,22 @@ public final class MaterialLibrary {
         loadLocalStrings(directory, "profiles/blockmap.json", "block material map", blocks);
         loadLocalStrings(directory, "profiles/primitivemap.json", "primitive material map", primitives);
         loadLocalBiomes(directory, "profiles/biomevariancemap.json", biomes);
-        snapshot = new Snapshot(blocks, primitives, biomes);
+        Map<String, Map<String, String>> actorBlocks = new LinkedHashMap<>();
+        for (String id : new TreeSet<>(materialMaps)) {
+            if (id.isEmpty()) continue;
+            if (!id.matches("[a-z0-9_-]{1,64}")) throw new IllegalArgumentException("Invalid material map ID: " + id);
+            Map<String, String> entries = new LinkedHashMap<>();
+            boolean loaded = loadStringLayers(
+                resources,
+                new ResourceLocation("pastfootsteps", "config/materials/" + id + ".json"),
+                entries,
+                true);
+            loaded |= loadLocalStrings(directory, "profiles/materials/" + id + ".json", "material map " + id, entries);
+            if (!loaded) PastFootsteps.LOG.warn("Material map '{}' is missing or invalid; using shared mappings", id);
+            actorBlocks.put(id, entries);
+        }
+        if (directory != null) local.dropMissingUnder(new File(directory, "profiles/materials"));
+        snapshot = new Snapshot(blocks, primitives, biomes, actorBlocks);
     }
 
     /**
@@ -73,6 +95,11 @@ public final class MaterialLibrary {
      * the {@code bigger} lookup used for fences and other narrow supporting blocks.
      */
     public String lookup(Block block, int meta, String substrate) {
+        return lookup(block, meta, substrate, "");
+    }
+
+    /** Actor map, then shared map, then primitive fallback. Explicit UNASSIGNED skips the block-map stage. */
+    public String lookup(Block block, int meta, String substrate, String materialMap) {
         if (block == null) return null;
         Object registeredName = Block.blockRegistry.getNameForObject(block);
         if (!(registeredName instanceof String)) return null;
@@ -80,11 +107,14 @@ public final class MaterialLibrary {
         Snapshot current = snapshot;
         String name = ((String) registeredName).toLowerCase(Locale.ROOT);
         String suffix = normalizeSubstrate(substrate);
-        String result = explicit(current.blocks, name, meta, suffix);
-        if (result != null) return result;
+        Map<String, String> actorMap = current.actorBlocks.get(materialMap);
+        String result = actorMap == null ? null : explicit(actorMap, name, meta, suffix);
+        if (result == null) result = explicit(current.blocks, name, meta, suffix);
+        if (result != null && !"UNASSIGNED".equals(result)) return result;
 
         if (!suffix.isEmpty() && !"bigger".equals(suffix)) return null;
-        return primitive(current.primitives, block);
+        result = primitive(current.primitives, block);
+        return "UNASSIGNED".equals(result) ? null : result;
     }
 
     public float biomeVolume(BiomeGenBase biome) {
@@ -167,15 +197,23 @@ public final class MaterialLibrary {
 
     private static void loadStringLayers(IResourceManager manager, ResourceLocation location,
         Map<String, String> destination) {
-        for (IResource resource : all(manager, location)) {
+        loadStringLayers(manager, location, destination, false);
+    }
+
+    private static boolean loadStringLayers(IResourceManager manager, ResourceLocation location,
+        Map<String, String> destination, boolean optional) {
+        boolean loaded = false;
+        for (IResource resource : all(manager, location, optional)) {
             try (Reader reader = new InputStreamReader(resource.getInputStream(), StandardCharsets.UTF_8)) {
                 JsonObject root = GSON.fromJson(reader, JsonObject.class);
                 if (root == null) throw new JsonParseException("expected a JSON object");
                 destination.putAll(stringLayer(root));
+                loaded = true;
             } catch (Exception e) {
                 PastFootsteps.LOG.warn("Skipping invalid material map layer {} ({})", location, resource, e);
             }
         }
+        return loaded;
     }
 
     private static void loadBiomeLayers(IResourceManager manager, ResourceLocation location,
@@ -191,11 +229,12 @@ public final class MaterialLibrary {
         }
     }
 
-    private void loadLocalStrings(File directory, String path, String description, Map<String, String> destination) {
-        if (directory == null) return;
+    private boolean loadLocalStrings(File directory, String path, String description, Map<String, String> destination) {
+        if (directory == null) return false;
         Map<String, String> layer = local
             .load(new File(directory, path), description, value -> stringLayer(object(value)));
         if (layer != null) destination.putAll(layer);
+        return layer != null;
     }
 
     private void loadLocalBiomes(File directory, String path, Map<String, BiomeVariance> destination) {
@@ -224,11 +263,20 @@ public final class MaterialLibrary {
                 entry.getKey()
                     .replace('>', ':')
                     .toLowerCase(Locale.ROOT),
-                entry.getValue()
-                    .getAsString()
-                    .split("#", 2)[0].trim());
+                materialValue(
+                    entry.getValue()
+                        .getAsString()));
         }
         return layer;
+    }
+
+    private static String materialValue(String raw) {
+        String value = raw.split("#", 2)[0].trim();
+        if ("UNASSIGNED".equalsIgnoreCase(value)) return "UNASSIGNED";
+        if ("NOT_EMITTER".equalsIgnoreCase(value) || "NON_EMITTER".equalsIgnoreCase(value)) return "NOT_EMITTER";
+        if ("MESSY_GROUND".equalsIgnoreCase(value)) return "MESSY_GROUND";
+        if ("VANILLA".equalsIgnoreCase(value)) return "VANILLA";
+        return value.toLowerCase(Locale.ROOT);
     }
 
     private static Map<String, BiomeVariance> biomeLayer(JsonObject root) {
@@ -264,10 +312,14 @@ public final class MaterialLibrary {
     }
 
     private static List<IResource> all(IResourceManager manager, ResourceLocation location) {
+        return all(manager, location, false);
+    }
+
+    private static List<IResource> all(IResourceManager manager, ResourceLocation location, boolean optional) {
         try {
             return manager.getAllResources(location);
         } catch (IOException e) {
-            PastFootsteps.LOG.warn("Could not load material resource {}", location, e);
+            if (!optional) PastFootsteps.LOG.warn("Could not load material resource {}", location, e);
             return Collections.emptyList();
         }
     }
@@ -288,15 +340,22 @@ public final class MaterialLibrary {
         static final Snapshot EMPTY = new Snapshot(
             Collections.<String, String>emptyMap(),
             Collections.<String, String>emptyMap(),
-            Collections.<String, BiomeVariance>emptyMap());
+            Collections.<String, BiomeVariance>emptyMap(),
+            Collections.<String, Map<String, String>>emptyMap());
         final Map<String, String> blocks;
         final Map<String, String> primitives;
         final Map<String, BiomeVariance> biomes;
+        final Map<String, Map<String, String>> actorBlocks;
 
-        Snapshot(Map<String, String> blocks, Map<String, String> primitives, Map<String, BiomeVariance> biomes) {
+        Snapshot(Map<String, String> blocks, Map<String, String> primitives, Map<String, BiomeVariance> biomes,
+            Map<String, Map<String, String>> actorBlocks) {
             this.blocks = Collections.unmodifiableMap(new LinkedHashMap<String, String>(blocks));
             this.primitives = Collections.unmodifiableMap(new LinkedHashMap<String, String>(primitives));
             this.biomes = Collections.unmodifiableMap(new LinkedHashMap<String, BiomeVariance>(biomes));
+            Map<String, Map<String, String>> maps = new LinkedHashMap<>();
+            for (Map.Entry<String, Map<String, String>> entry : actorBlocks.entrySet())
+                maps.put(entry.getKey(), Collections.unmodifiableMap(new LinkedHashMap<>(entry.getValue())));
+            this.actorBlocks = Collections.unmodifiableMap(maps);
         }
     }
 }

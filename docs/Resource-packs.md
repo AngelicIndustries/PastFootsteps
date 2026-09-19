@@ -21,7 +21,61 @@ replace entries with the same key. If one layer is malformed, that layer is skip
 
 `^0` through `^15` select metadata and take precedence over the block's generic entry. The optional suffix is one of
 `carpet`, `foliage`, `messy`, `wet`, or `bigger`. Values may name one acoustic, a comma-separated composite, or a
-special value such as `NOT_EMITTER`, `MESSY_GROUND`, or `UNASSIGNED`. Special values are preserved verbatim.
+special value such as `NOT_EMITTER`, `MESSY_GROUND`, `VANILLA`, or `UNASSIGNED`. Acoustic names are normalized to
+lowercase; special values are recognized regardless of case. `NON_EMITTER` is an alias for `NOT_EMITTER`.
+
+`UNASSIGNED` explicitly clears a block association and continues to primitive fallback for ordinary surfaces and
+`bigger` lookups. It does not revive a less-specific or lower-pack block entry. For supplementary substrates such
+as `foliage` or `wet`, it returns no association; the resolver may still use its usual wet-layer default.
+`NOT_EMITTER` is an explicit non-emitter and does not fall back to a primitive acoustic. On the `carpet` substrate,
+non-emitting overlays still allow the underlying surface to be considered. `VANILLA` requests native step playback
+for a normal surface rather than a PF acoustic. `MESSY_GROUND` retains its marker behavior; the separate messy-foliage
+strategy remains outside this implementation.
+
+## Per-entity material maps
+
+Entity profiles can select a named block map using `materialMap`. For example, add this profile to a local
+`config/pastfootsteps/profiles/entities.json` file (merge it with any existing entries):
+
+```json
+{
+  "schemaVersion": 1,
+  "entities": {
+    "cow_hooves": {
+      "parent": "Cow",
+      "selector": { "entityId": "Cow" },
+      "priority": 1,
+      "materialMap": "hooves"
+    }
+  }
+}
+```
+
+Create `config/pastfootsteps/profiles/materials/hooves.json` with the same flat block-map format:
+
+```json
+{
+  "minecraft:stone": "wood",
+  "minecraft:sand": "sand",
+  "minecraft:tallgrass.foliage": "NOT_EMITTER"
+}
+```
+
+The resource-pack equivalent is `assets/pastfootsteps/config/materials/hooves.json`. Maps load only when referenced
+by a compiled entity profile. IDs contain 1 to 64 lowercase letters, digits, underscores or hyphens, without `.json`.
+Several profiles can share a map. Children inherit `materialMap`; explicit `"materialMap": ""` restores the shared
+map for that profile. No bundled profiles select a custom map by default.
+
+For each substrate, the selected map is checked first, then the shared block map if there is no matching entry,
+then the shared primitive map where applicable. An entity-map generic match therefore overrides a shared metadata
+match. Explicit `UNASSIGNED` bypasses the shared block map and proceeds to primitive fallback; omit an entry to use
+the shared block mapping. `NOT_EMITTER`, `VANILLA` and explicit empty acoustic definitions retain their distinct meanings.
+Maps apply to normal contacts, wet layers, foliage, ladders and snow/carpet overlays. Explicit materials provided
+by entity-support integrations remain authoritative. Footprint geometry and contact timing still follow PF's engine.
+
+Pack layers merge by key, with local files applied last. Invalid local edits retain the last valid version;
+deleting a local map restores its pack mappings. Missing maps fall back to shared mappings and log a warning.
+Use `/pf reload` after edits; `/pf report` includes each tracked actor's selected `materialMap`.
 
 ## Primitive fallback
 
@@ -170,6 +224,7 @@ exact-ID selector for a child or horse/skeleton variant that must override a bun
 | `runSpeed` | `0.22` | Running threshold in blocks per client tick, with smoothing and hysteresis. Sprinting also selects running. |
 | `volume` | `1` | Multiplier applied with master and player/passive/hostile source volume. |
 | `referenceWidth` | `0` | Adult nominal bounding-box width in blocks for audio pitch correction; `0` leaves pitch neutral. Inherited by child profiles and independent of `childScale`. |
+| `materialMap` | `""` | Named per-entity block map; inherited, with an explicit empty string restoring shared mappings. |
 | `enabled` | `true` | Whether the entry participates in resolution. |
 
 A gait defines named feet and their contact phase within one distance-based cycle. Positive lateral offset is

@@ -49,6 +49,7 @@ public final class ProfileLibrary implements IResourceManagerReloadListener {
     private static final ResourceLocation GAITS = new ResourceLocation("pastfootsteps", "config/gaits.json");
     private static final ResourceLocation ENTITIES = new ResourceLocation("pastfootsteps", "config/entities.json");
     private static final Pattern ID = Pattern.compile("[A-Za-z0-9_.:-]{1,128}");
+    private static final Pattern MATERIAL_MAP_ID = Pattern.compile("[a-z0-9_-]{1,64}");
     private static final Pattern CLASS_NAME = Pattern
         .compile("[A-Za-z_$][A-Za-z0-9_$]*(\\.[A-Za-z_$][A-Za-z0-9_$]*){0,31}");
     private static final int MAX_CONTACTS = 16;
@@ -141,6 +142,11 @@ public final class ProfileLibrary implements IResourceManagerReloadListener {
     /** Human-readable errors from the latest reload, ordered by layer processing order. */
     public List<String> diagnostics() {
         return diagnostics;
+    }
+
+    /** Returns the unique nonempty material map IDs referenced by compiled profiles. */
+    public Set<String> materialMaps() {
+        return snapshot.materialMaps;
     }
 
     private static int loadGaitResources(IResourceManager manager, Map<String, GaitDefinition> destination,
@@ -324,7 +330,8 @@ public final class ProfileLibrary implements IResourceManagerReloadListener {
                 "childScale",
                 "runSpeed",
                 "volume",
-                "referenceWidth");
+                "referenceWidth",
+                "materialMap");
             if (!bool(value, "enabled", true, label)) {
                 candidate.put(id, EntitySpec.disabled(id));
                 continue;
@@ -339,6 +346,11 @@ public final class ProfileLibrary implements IResourceManagerReloadListener {
             Double runSpeed = optionalNumber(value, "runSpeed", Double.MIN_VALUE, 4.0, path);
             Double volume = optionalNumber(value, "volume", 0.0, 4.0, path);
             Double referenceWidth = optionalNumber(value, "referenceWidth", 0.0, 64.0, path);
+            String materialMap = optionalString(value, "materialMap", path);
+            if (materialMap != null && !materialMap.isEmpty()
+                && !MATERIAL_MAP_ID.matcher(materialMap)
+                    .matches())
+                throw new JsonParseException(path + ".materialMap must be empty or match [a-z0-9_-]{1,64}");
             if (parent == null && gaitId == null)
                 throw new JsonParseException(path + ".gait is required without parent");
             candidate.put(
@@ -353,7 +365,8 @@ public final class ProfileLibrary implements IResourceManagerReloadListener {
                     childScale,
                     runSpeed,
                     volume,
-                    referenceWidth));
+                    referenceWidth,
+                    materialMap));
         }
         // Resolve the whole merged graph before committing this layer so a bad parent cannot partially apply.
         compileProfiles(candidate, gaits, label, Collections.<String>emptyList(), false);
@@ -439,6 +452,7 @@ public final class ProfileLibrary implements IResourceManagerReloadListener {
         float volume = spec.volume != null ? spec.volume.floatValue() : parent == null ? 1.0F : parent.volume;
         double referenceWidth = spec.referenceWidth != null ? spec.referenceWidth.doubleValue()
             : parent == null ? 0.0 : parent.referenceWidth;
+        String materialMap = spec.materialMap != null ? spec.materialMap : parent == null ? "" : parent.materialMap;
 
         Class<? extends EntityLivingBase> entityClass = resolveClass(spec.selector.className);
         if (reportDormantClasses && spec.selector.className != null
@@ -465,7 +479,8 @@ public final class ProfileLibrary implements IResourceManagerReloadListener {
             childScale,
             runSpeed,
             volume,
-            referenceWidth);
+            referenceWidth,
+            materialMap);
         visiting.remove(id);
         result.put(id, resolved);
         return resolved;
@@ -713,9 +728,11 @@ public final class ProfileLibrary implements IResourceManagerReloadListener {
         final Double runSpeed;
         final Double volume;
         final Double referenceWidth;
+        final String materialMap;
 
         EntitySpec(String id, String parentId, SelectorSpec selector, int priority, String gaitId,
-            Double strideMultiplier, Double childScale, Double runSpeed, Double volume, Double referenceWidth) {
+            Double strideMultiplier, Double childScale, Double runSpeed, Double volume, Double referenceWidth,
+            String materialMap) {
             this(
                 id,
                 false,
@@ -727,12 +744,13 @@ public final class ProfileLibrary implements IResourceManagerReloadListener {
                 childScale,
                 runSpeed,
                 volume,
-                referenceWidth);
+                referenceWidth,
+                materialMap);
         }
 
         private EntitySpec(String id, boolean disabled, String parentId, SelectorSpec selector, int priority,
             String gaitId, Double strideMultiplier, Double childScale, Double runSpeed, Double volume,
-            Double referenceWidth) {
+            Double referenceWidth, String materialMap) {
             this.id = id;
             this.disabled = disabled;
             this.parentId = parentId;
@@ -744,10 +762,11 @@ public final class ProfileLibrary implements IResourceManagerReloadListener {
             this.runSpeed = runSpeed;
             this.volume = volume;
             this.referenceWidth = referenceWidth;
+            this.materialMap = materialMap;
         }
 
         static EntitySpec disabled(String id) {
-            return new EntitySpec(id, true, null, SelectorSpec.exact(id), 0, null, null, null, null, null, null);
+            return new EntitySpec(id, true, null, SelectorSpec.exact(id), 0, null, null, null, null, null, null, null);
         }
     }
 
@@ -773,6 +792,7 @@ public final class ProfileLibrary implements IResourceManagerReloadListener {
         final Map<String, EntityProfile> exactProfiles;
         final List<EntityProfile> selectors;
         final Set<String> excludedEntityIds;
+        final Set<String> materialMaps;
 
         Snapshot(Map<String, GaitDefinition> gaits, Map<String, EntityProfile> profiles,
             Set<String> excludedEntityIds) {
@@ -796,6 +816,11 @@ public final class ProfileLibrary implements IResourceManagerReloadListener {
             exactProfiles = Collections.unmodifiableMap(exact);
             selectors = Collections.unmodifiableList(ordered);
             this.excludedEntityIds = Collections.unmodifiableSet(new HashSet<String>(excludedEntityIds));
+            Set<String> materialMaps = new HashSet<String>();
+            for (EntityProfile profile : profiles.values()) {
+                if (!profile.materialMap.isEmpty()) materialMaps.add(profile.materialMap);
+            }
+            this.materialMaps = Collections.unmodifiableSet(materialMaps);
         }
 
         EntityProfile resolve(EntityLivingBase actor, String entityId) {

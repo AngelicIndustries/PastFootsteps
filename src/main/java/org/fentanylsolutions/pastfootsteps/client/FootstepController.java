@@ -190,7 +190,7 @@ public final class FootstepController implements IResourceManagerReloadListener 
     public void onResourceManagerReload(IResourceManager manager) {
         reset();
         profiles.reload(manager, Config.directory);
-        materials.reload(manager, Config.directory);
+        materials.reload(manager, Config.directory, profiles.materialMaps());
         resolver.reloadSupports(manager, Config.directory);
         footprints.reload(manager, Config.directory);
         equipment.reload(manager, Config.directory);
@@ -248,6 +248,7 @@ public final class FootstepController implements IResourceManagerReloadListener 
             entry.addProperty("entityId", state.actor.getEntityId());
             entry.addProperty("profile", state.profile.id);
             entry.addProperty("gait", state.profile.gait.id);
+            entry.addProperty("materialMap", state.profile.materialMap);
             entry.addProperty("phase", state.tracker.phase());
             entry.addProperty("material", state.lastMaterial);
             entry.addProperty("liquidMode", state.liquidMode.name());
@@ -436,7 +437,7 @@ public final class FootstepController implements IResourceManagerReloadListener 
         double motionX = motion == null ? actor.posX : motion.x;
         double motionZ = motion == null ? actor.posZ : motion.z;
         double motionY = motion == null ? actor.boundingBox.minY : motion.feetY;
-        Surface current = resolver.resolveAt(actor, motionX, motionY, motionZ, 0, 0);
+        Surface current = resolver.resolveAt(actor, motionX, motionY, motionZ, 0, 0, state.profile.materialMap);
         if (motion == null && actor != Minecraft.getMinecraft().thePlayer && (current == null || !current.grounded)) {
             current = remoteSupport(state, current);
         }
@@ -451,7 +452,8 @@ public final class FootstepController implements IResourceManagerReloadListener 
             .getBiomeGenForCoords((int) Math.floor(actor.posX), (int) Math.floor(actor.posZ));
         state.pitch += (materials.biomePitch(biome) - state.pitch) * 0.05f;
         state.volume += (materials.biomeVolume(biome) - state.volume) * 0.05f;
-        state.foliage = Config.surfaceSounds && Config.foliage ? resolver.foliage(actor) : null;
+        state.foliage = Config.surfaceSounds && Config.foliage ? resolver.foliage(actor, state.profile.materialMap)
+            : null;
         state.stepped = false;
         double size = state.child ? state.profile.childScale : 1;
         double feetY = motion == null && actor != Minecraft.getMinecraft().thePlayer && grounded && current != null
@@ -538,7 +540,7 @@ public final class FootstepController implements IResourceManagerReloadListener 
         if (dx * dx + dz * dz > 2.25 || Math.abs(dy) > 0.625 || movedX * movedX + movedZ * movedZ < 0.00001)
             return fallback;
         // 1.7 movement packets have no ground bit. Confirm the interpolated step's destination against geometry.
-        Surface target = resolver.resolveAt(actor, targetX, targetY, targetZ, 0, 0);
+        Surface target = resolver.resolveAt(actor, targetX, targetY, targetZ, 0, 0, state.profile.materialMap);
         return target != null && target.grounded && Math.abs(target.contactY - state.lastSurface.contactY) <= 0.625
             ? target
             : fallback;
@@ -565,7 +567,8 @@ public final class FootstepController implements IResourceManagerReloadListener 
             contact.y,
             contact.z,
             contact.foot.lateral * width,
-            contact.foot.forward * width);
+            contact.foot.forward * width,
+            state.profile.materialMap);
         if (surface == null && state.surface != null && state.surface.grounded && !contact.kind.isJump()) {
             surface = resolver.resolveAt(
                 state.actor,
@@ -573,7 +576,8 @@ public final class FootstepController implements IResourceManagerReloadListener 
                 state.surface.contactY,
                 contact.z,
                 contact.foot.lateral * width,
-                contact.foot.forward * width);
+                contact.foot.forward * width,
+                state.profile.materialMap);
         }
         if (surface == null) surface = contact.kind.isJump() ? state.lastSurface : state.surface;
         if (surface == null) return;

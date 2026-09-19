@@ -55,6 +55,11 @@ headroom by normalizing walking gain, preserving running contrast below
 Minecraft's volume ceiling. Profiles provide the nominal
 adult width missing from 1.7's entity-type API. Child gait timing is unchanged.
 
+Per-entity block-map precedence and special-value handling are adapted from
+Isolator, Lookup, SoundsKey and AssociationPool at the same MIT revision.
+PastFootsteps selects shared named maps through inherited entity profiles;
+its map paths and metadata selectors are specific to the Forge 1.7 adapter.
+
 The 455 OGG files imported from that namespace are byte-identical MIT-source
 assets and are all mono. Its imported sound event categories were changed
 from "master" to the existing 1.7.10 "player" category. Local aliases cover

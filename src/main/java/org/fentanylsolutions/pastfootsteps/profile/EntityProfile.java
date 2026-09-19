@@ -6,6 +6,7 @@ import java.util.regex.Pattern;
 public final class EntityProfile {
 
     private static final Pattern ID = Pattern.compile("[A-Za-z0-9_.:-]{1,128}");
+    private static final Pattern MATERIAL_MAP_ID = Pattern.compile("[a-z0-9_-]{1,64}");
 
     public final String id;
     public final String parentId;
@@ -18,6 +19,8 @@ public final class EntityProfile {
     public final float volume;
     /** Adult nominal bounding-box width in blocks; zero leaves size pitch correction unspecified. */
     public final double referenceWidth;
+    /** Optional material map identifier; empty means the shared block map. */
+    public final String materialMap;
 
     public EntityProfile(String id, GaitDefinition gait, double strideMultiplier, double childScale, double runSpeed,
         float volume) {
@@ -25,7 +28,17 @@ public final class EntityProfile {
     }
 
     public EntityProfile(String id, GaitDefinition gait, double strideMultiplier, double childScale, double runSpeed,
+        float volume, String materialMap) {
+        this(id, gait, strideMultiplier, childScale, runSpeed, volume, 0, materialMap);
+    }
+
+    public EntityProfile(String id, GaitDefinition gait, double strideMultiplier, double childScale, double runSpeed,
         float volume, double referenceWidth) {
+        this(id, gait, strideMultiplier, childScale, runSpeed, volume, referenceWidth, "");
+    }
+
+    public EntityProfile(String id, GaitDefinition gait, double strideMultiplier, double childScale, double runSpeed,
+        float volume, double referenceWidth, String materialMap) {
         this(
             id,
             null,
@@ -36,7 +49,8 @@ public final class EntityProfile {
             childScale,
             runSpeed,
             volume,
-            referenceWidth);
+            referenceWidth,
+            materialMap);
     }
 
     EntityProfile(String id, String parentId, EntitySelector selector, int priority, GaitDefinition gait,
@@ -45,7 +59,29 @@ public final class EntityProfile {
     }
 
     EntityProfile(String id, String parentId, EntitySelector selector, int priority, GaitDefinition gait,
+        double strideMultiplier, double childScale, double runSpeed, float volume, String materialMap) {
+        this(id, parentId, selector, priority, gait, strideMultiplier, childScale, runSpeed, volume, 0, materialMap);
+    }
+
+    EntityProfile(String id, String parentId, EntitySelector selector, int priority, GaitDefinition gait,
         double strideMultiplier, double childScale, double runSpeed, float volume, double referenceWidth) {
+        this(
+            id,
+            parentId,
+            selector,
+            priority,
+            gait,
+            strideMultiplier,
+            childScale,
+            runSpeed,
+            volume,
+            referenceWidth,
+            "");
+    }
+
+    EntityProfile(String id, String parentId, EntitySelector selector, int priority, GaitDefinition gait,
+        double strideMultiplier, double childScale, double runSpeed, float volume, double referenceWidth,
+        String materialMap) {
         if (id == null || !ID.matcher(id)
             .matches()) throw new IllegalArgumentException("id must be a sane ID");
         if (parentId != null && !ID.matcher(parentId)
@@ -59,6 +95,8 @@ public final class EntityProfile {
         requireRange(runSpeed, Double.MIN_VALUE, 4.0, "runSpeed");
         requireRange(volume, 0.0, 4.0, "volume");
         requireRange(referenceWidth, 0.0, 64.0, "referenceWidth");
+        if (materialMap == null || !materialMap.isEmpty() && !MATERIAL_MAP_ID.matcher(materialMap)
+            .matches()) throw new IllegalArgumentException("materialMap must be empty or a lowercase safe ID");
         this.id = id;
         this.parentId = parentId;
         this.selector = selector;
@@ -69,6 +107,7 @@ public final class EntityProfile {
         this.runSpeed = runSpeed;
         this.volume = volume;
         this.referenceWidth = referenceWidth;
+        this.materialMap = materialMap;
     }
 
     private static void requireRange(double value, double minimum, double maximum, String field) {

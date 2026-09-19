@@ -394,6 +394,51 @@ public class ProfileLibraryTest {
     }
 
     @Test
+    public void materialMapIsInheritedAndExplicitEmptyClearsIt() {
+        Resources resources = validDefaults();
+        resources.add(
+            "config/entities.json",
+            "{\"schemaVersion\":1,\"entities\":{" + "\"base\":{\"gait\":\"biped\",\"materialMap\":\"stone\"},"
+                + "\"child\":{\"parent\":\"base\"},"
+                + "\"cleared\":{\"parent\":\"base\",\"materialMap\":\"\"}}}");
+
+        ProfileLibrary library = load(resources);
+        assertEquals("stone", library.resolve("base").materialMap);
+        assertEquals("stone", library.resolve("child").materialMap);
+        assertEquals("", library.resolve("cleared").materialMap);
+    }
+
+    @Test
+    public void invalidMaterialMapLayerRetainsLowerProfiles() {
+        Resources resources = validDefaults();
+        resources.add(
+            "config/entities.json",
+            "{\"schemaVersion\":1,\"entities\":{\"Player\":{\"materialMap\":\"Bad Map\"}}}");
+
+        ProfileLibrary library = load(resources);
+        assertEquals("", library.resolve("Player").materialMap);
+        assertTrue(hasDiagnostic(library, "materialMap"));
+    }
+
+    @Test
+    public void materialMapsEnumerateInheritedAndVariantProfiles() {
+        Resources resources = validDefaults();
+        resources.add(
+            "config/entities.json",
+            "{\"schemaVersion\":1,\"entities\":{" + "\"base\":{\"gait\":\"biped\",\"materialMap\":\"stone\"},"
+                + "\"adult\":{\"parent\":\"base\",\"selector\":{\"entityId\":\"Cow\",\"age\":\"adult\"}},"
+                + "\"child\":{\"parent\":\"base\",\"selector\":{\"entityId\":\"Cow\",\"age\":\"child\"},\"materialMap\":\"mud\"}}}");
+
+        ProfileLibrary library = load(resources);
+        assertEquals(new java.util.HashSet<String>(java.util.Arrays.asList("stone", "mud")), library.materialMaps());
+        try {
+            library.materialMaps()
+                .add("other");
+            fail("material map IDs must be immutable");
+        } catch (UnsupportedOperationException expected) {}
+    }
+
+    @Test
     public void invalidReferenceWidthLeavesLowerProfileAndOldConstructorIsNeutral() {
         Resources resources = validDefaults();
         resources.add(
