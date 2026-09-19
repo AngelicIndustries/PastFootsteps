@@ -33,6 +33,7 @@ public final class SurfaceResolver {
     private static final int FOLIAGE_VERTICAL_SAMPLES = 5;
     private static final int MAX_SUPPORT_CANDIDATES = 16;
     private static final double OVERLAY_EPSILON = 0.001D;
+    private static final double MAX_THIN_OVERLAY_HEIGHT = 0.3D;
 
     private final MaterialLibrary materials;
     private final SupportProfiles supports = new SupportProfiles();
@@ -238,35 +239,56 @@ public final class SurfaceResolver {
         return null;
     }
 
-    /**
-     * Snow layers and carpets in 1.7 have a visual top above their collision top. Their material
-     * belongs to the contact, while tracker physics keeps the real collision height.
-     */
+    /** Mapped thin coverings select audio and decal geometry without changing physical grounding. */
     private Surface overlaySurface(World world, double footX, double footZ, Surface physical, String materialMap) {
         int x = floor(footX), z = floor(footZ);
         int y = floor(physical.contactY + OVERLAY_EPSILON);
         if (!world.blockExists(x, y, z)) return physical;
         Block overlay = world.getBlock(x, y, z);
-        if (!(overlay instanceof BlockSnow) && !(overlay instanceof BlockCarpet)) return physical;
+        boolean snow = overlay instanceof BlockSnow;
+        boolean carpet = overlay instanceof BlockCarpet;
         int meta = world.getBlockMetadata(x, y, z);
-        double visualHeight = overlay instanceof BlockSnow ? ((meta & 7) + 1) * 0.125D : 0.0625D;
-        double collisionTop = overlay instanceof BlockSnow ? y + (meta & 7) * 0.125D : y;
-        if (Math.abs(physical.contactY - collisionTop) > OVERLAY_EPSILON
-            && Math.abs(physical.contactY - y) > OVERLAY_EPSILON) return physical;
         BlockMaterial appearance = BlockAppearanceProviders.resolve(world, x, y, z, overlay, meta);
-        MaterialLibrary.Association association = materials.resolve(
-            appearance.block,
-            appearance.metadata,
-            overlay instanceof BlockCarpet ? "carpet" : "",
-            materialMap);
-        if (!emitter(association.name))
+        MaterialLibrary.Association association = materials
+            .resolve(appearance.block, appearance.metadata, snow ? "" : "carpet", materialMap);
+        // Only the established vanilla cases can opt in through an ordinary material mapping.
+        if ((snow || carpet) && !emitter(association.name))
             association = materials.resolve(appearance.block, appearance.metadata, "", materialMap);
         if (!emitter(association.name)) return physical;
-        String material = association.name;
+
+        AxisAlignedBB visual;
+        if (snow || carpet) {
+            double visualHeight = snow ? ((meta & 7) + 1) * 0.125D : 0.0625D;
+            double collisionTop = snow ? y + (meta & 7) * 0.125D : y;
+            if (Math.abs(physical.contactY - collisionTop) > OVERLAY_EPSILON
+                && Math.abs(physical.contactY - y) > OVERLAY_EPSILON) return physical;
+            visual = AxisAlignedBB.getBoundingBox(x, y, z, x + 1, y + visualHeight, z + 1);
+        } else {
+            visual = thinOverlayBounds(world, overlay, x, y, z);
+            if (visual == null) return physical;
+            boolean isSupport = physical.x == x && physical.y == y && physical.z == z;
+            // A separate covering must rest on the selected support. A collidable thin block may
+            // itself support the foot, with its visible surface at or above that collision contact.
+            if (!isSupport && Math.abs(physical.contactY - y) > OVERLAY_EPSILON) return physical;
+            if (physical.contactY < visual.minY - OVERLAY_EPSILON || physical.contactY > visual.maxY + OVERLAY_EPSILON)
+                return physical;
+        }
+        double minX = Math.max(physical.minX, visual.minX), maxX = Math.min(physical.maxX, visual.maxX);
+        double minZ = Math.max(physical.minZ, visual.minZ), maxZ = Math.min(physical.maxZ, visual.maxZ);
+        if (minX >= maxX || minZ >= maxZ
+            || footX < minX
+            || footX > maxX
+            || footZ < minZ
+            || footZ > maxZ
+            || physical.contactX < minX
+            || physical.contactX > maxX
+            || physical.contactZ < minZ
+            || physical.contactZ > maxZ) return physical;
+
         String wet = materials.lookup(appearance.block, appearance.metadata, "wet", materialMap);
         Block.SoundType step = association.sound;
         return new Surface(
-            material,
+            association.name,
             wet == null ? physical.wetMaterial : wet,
             step == null ? physical.vanillaSound : step.getStepResourcePath(),
             step == null ? physical.vanillaVolume : step.getVolume() * 0.15F,
@@ -279,12 +301,45 @@ public final class SurfaceResolver {
             physical.contactX,
             physical.contactY,
             physical.contactZ,
-            physical.minX,
-            physical.maxX,
-            physical.minZ,
-            physical.maxZ,
-            y + visualHeight,
+            minX,
+            maxX,
+            minZ,
+            maxZ,
+            visual.maxY,
             physical.supportEntity);
+    }
+
+    /** 1.7 has no generic visual-shape API; accept only bounded, floor-aligned state bounds. */
+    private static AxisAlignedBB thinOverlayBounds(World world, Block block, int x, int y, int z) {
+        float oldMinX = (float) block.getBlockBoundsMinX(), oldMinY = (float) block.getBlockBoundsMinY(),
+            oldMinZ = (float) block.getBlockBoundsMinZ(), oldMaxX = (float) block.getBlockBoundsMaxX(),
+            oldMaxY = (float) block.getBlockBoundsMaxY(), oldMaxZ = (float) block.getBlockBoundsMaxZ();
+        try {
+            block.setBlockBoundsBasedOnState(new LoadedBlockAccess(world), x, y, z);
+            double minX = block.getBlockBoundsMinX(), minY = block.getBlockBoundsMinY(),
+                minZ = block.getBlockBoundsMinZ(), maxX = block.getBlockBoundsMaxX(), maxY = block.getBlockBoundsMaxY(),
+                maxZ = block.getBlockBoundsMaxZ();
+            if (!finite(minX) || !finite(minY)
+                || !finite(minZ)
+                || !finite(maxX)
+                || !finite(maxY)
+                || !finite(maxZ)
+                || minX < 0
+                || minZ < 0
+                || maxX > 1
+                || maxZ > 1
+                || minX >= maxX
+                || minZ >= maxZ
+                || Math.abs(minY) > OVERLAY_EPSILON
+                || maxY <= minY
+                || maxY >= MAX_THIN_OVERLAY_HEIGHT) return null;
+            return AxisAlignedBB.getBoundingBox(x + minX, y + minY, z + minZ, x + maxX, y + maxY, z + maxZ);
+        } catch (RuntimeException | LinkageError ignored) {
+            // Incompatible bounds code or an unloaded neighbor cannot replace the physical surface.
+            return null;
+        } finally {
+            block.setBlockBounds(oldMinX, oldMinY, oldMinZ, oldMaxX, oldMaxY, oldMaxZ);
+        }
     }
 
     /** Resolves only explicit entity support rules after block collision found no support. */

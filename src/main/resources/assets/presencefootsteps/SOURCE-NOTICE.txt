@@ -109,3 +109,8 @@ stereo recordings, encoded with FFmpeg/libvorbis at quality 5. These modified
 copies retain the original Samulis / sgossner attribution and CC BY 4.0
 terms described in ../pastfootsteps/EQUIPMENT-SOURCE-NOTICE.txt. They are not
 covered by the PF MIT asset license. Original stereo recordings are unchanged.
+
+Thin overlay selection follows MIT PFSolver's mapped carpet substrate and
+sub-0.3-block shape check. The 1.7 adapter uses bounded state bounds for
+non-colliding floor coverings, guards unloaded reads, restores shared block
+bounds and intersects decal geometry with the physical support.

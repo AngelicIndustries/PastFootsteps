@@ -49,6 +49,6 @@ Block-and-metadata rules take priority over whole-block rules, then vanilla step
 
 ## Rendering
 
-Print polygons are clipped to their collision support while retaining their UV coordinates. They fade during the final 30% of their lifetime and are invalidated when the supporting block or metadata changes. Unloaded chunks are never loaded for a print. Rendering is bounded by the cap and distance setting and samples light per print. Moving entity supports produce contacts and sounds but do not receive attached decals.
+Print polygons are clipped to their collision support while retaining their UV coordinates. For mapped thin floor coverings, they are additionally clipped to the covering and placed at its current visible top; ordinary surface rules still decide whether prints are enabled there. They fade during the final 30% of their lifetime and are invalidated when the supporting block or metadata changes. Unloaded chunks are never loaded for a print. Rendering is bounded by the cap and distance setting and samples light per print. Moving entity supports produce contacts and sounds but do not receive attached decals.
 
 The footprint atlas comes from the verified MIT-era Dynamic Surroundings assets. The consumer, geometry and renderer are built around PF's contact engine rather than AET's former footprint timing and renderer.

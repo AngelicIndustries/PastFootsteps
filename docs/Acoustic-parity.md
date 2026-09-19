@@ -162,3 +162,12 @@ base-to-default-substrate fallback to `.bigger`; ordinary sounds must not leak i
 It also bounds and cycle-checks base chains, and retains the physical collision geometry for footprints.
 Modern copied-properties base metadata has no generic 1.7 equivalent. MIT's grass-sound/name-to-leaves heuristic
 remains unported; only known bases and registered appearance adapters are used here.
+
+## Thin floor coverings
+
+MIT `PFSolver` checks a mapped `.carpet` substrate on a collision shape below 0.3 blocks high. PF adapts this to
+1.7 state bounds because legacy carpets and pressure plates may have no collision. Only explicit emitting
+`.carpet` mappings opt generic coverings in. Floor alignment, horizontal coverage and real support bounds constrain
+the overlay; snow/carpet special cases retain their known visual/collision offsets. Shape reads use a guarded
+block-access view and restore the block's shared bounds. Footprint clipping and height change without moving the
+physical contact. This does not provide arbitrary multipart shape inference.

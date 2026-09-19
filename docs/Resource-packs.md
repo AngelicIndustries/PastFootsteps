@@ -101,6 +101,34 @@ Appearance affects sound selection only. Collision/contact bounds and footprint 
 block; PF never substitutes a full cube's geometry for a covered slab, stair or slope. These integrations add no
 CFG settings or required mods.
 
+## Thin floor coverings
+
+An explicit `.carpet` mapping also lets a thin covering select footsteps over the supporting block, even if the
+covering has no collision of its own. For example:
+
+```json
+{
+  "example:floor_mat.carpet": "rug",
+  "example:floor_mat^1.carpet": "straw"
+}
+```
+
+PF reads the block's current state bounds. A generic covering must start at the bottom of its cell, stay within
+that cell horizontally, and have a positive height less than 0.3 blocks. The foot must be over both the covering
+and the physical support. Missing/non-emitting `.carpet` mappings leave the support's sound in place. Ordinary
+material mappings alone do not opt a non-colliding block into this behavior. Entity maps and cover appearance
+providers apply as usual; vanilla snow and carpet retain their existing special height handling.
+
+Pressure plates work with the bundled mappings, including their changing pressed height. Footprint bounds are
+clipped to the covering and its support, and their visual height follows the covering; footprint eligibility is
+still controlled by the normal footprint rules. Physical grounding and contact timing are unchanged. Unmapped
+plants, rails and decorations do not automatically become floor coverings.
+
+Bounds are refreshed per query and restored afterward. Bounds code that requires unloaded neighbors or cannot
+use a read-only block-access view falls back to the physical surface. Arbitrary multipart/render-only shapes are
+not inferred from textures or a broad selection box; they need a specific integration if their state bounds do
+not describe their actual floor surface.
+
 ## Per-entity material maps
 
 Entity profiles can select a named block map using `materialMap`. For example, add this profile to a local
@@ -139,7 +167,7 @@ For each substrate, the selected map is checked first, then the shared block map
 then known base-material mappings and the shared primitive map where applicable. An entity-map generic match therefore overrides a shared metadata
 match. Explicit `UNASSIGNED` bypasses the shared block map and proceeds to base-material/primitive fallback; omit an entry to use
 the shared block mapping. `NOT_EMITTER`, `VANILLA` and explicit empty acoustic definitions retain their distinct meanings.
-Maps apply to normal contacts, wet layers, foliage, ladders and snow/carpet overlays. Explicit materials provided
+Maps apply to normal contacts, wet layers, foliage, ladders and mapped thin overlays. Explicit materials provided
 by entity-support integrations remain authoritative. Footprint geometry and contact timing still follow PF's engine.
 
 Pack layers merge by key, with local files applied last. Invalid local edits retain the last valid version;
