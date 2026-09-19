@@ -242,6 +242,10 @@ public final class FootstepController implements IResourceManagerReloadListener 
             .generate(materials, sound, materialMap, unmappedOnly);
     }
 
+    public int exportAcoustics(java.io.File target) throws java.io.IOException {
+        return org.fentanylsolutions.pastfootsteps.sound.AcousticExport.write(target, sound.definitions());
+    }
+
     public String diagnosticReport() {
         com.google.gson.JsonObject root = new com.google.gson.JsonObject();
         root.addProperty("version", org.fentanylsolutions.pastfootsteps.Tags.VERSION);

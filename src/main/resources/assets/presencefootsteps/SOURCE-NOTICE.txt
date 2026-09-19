@@ -138,3 +138,10 @@ uses a smooth configurable stride curve above sqrt(0.1), reaching 1.5x at 0.6
 blocks/tick, to fit its existing four-foot diagonal trot rather than copying the
 upstream modifier's three-event timing or its absolute multiplier. Other gaits
 retain their existing timing unless explicitly configured.
+
+Acoustic export follows the audited MIT options screen's Dump Acoustics feature
+in purpose. The Forge command exports an indexed resource-pack ZIP from a
+snapshot of successful loaded JSON definitions, including local last-valid
+fallbacks. It preserves selected source syntax instead of normalizing runtime
+nodes with upstream codecs. The snapshot and archive writer are local work;
+no audio files are exported.

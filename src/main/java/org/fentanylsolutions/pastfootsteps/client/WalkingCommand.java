@@ -25,7 +25,7 @@ public final class WalkingCommand extends CommandBase {
 
     @Override
     public String getCommandUsage(ICommandSender sender) {
-        return "/pf reload|report|status|mappings [all|unmapped] [map]";
+        return "/pf reload|report|status|acoustics|mappings [all|unmapped] [map]";
     }
 
     @Override
@@ -65,6 +65,20 @@ public final class WalkingCommand extends CommandBase {
                 PastFootsteps.LOG.warn("Could not write PF diagnostic report", error);
                 sender.addChatMessage(new ChatComponentText("Could not write the report. See the game log."));
             }
+        } else if ("acoustics".equals(action)) {
+            if (arguments.length != 1) {
+                usage(sender);
+                return;
+            }
+            File target = new File(Config.directory, "diagnostics/acoustics-export.zip");
+            try {
+                int count = FootstepController.INSTANCE.exportAcoustics(target);
+                sender.addChatMessage(
+                    new ChatComponentText("Exported " + count + " acoustic definitions: " + target.getAbsolutePath()));
+            } catch (Exception error) {
+                PastFootsteps.LOG.warn("Could not export PF acoustics", error);
+                sender.addChatMessage(new ChatComponentText("Could not export acoustics. See the game log."));
+            }
         } else if ("mappings".equals(action)) {
             writeMappings(sender, arguments);
         } else if ("status".equals(action) && arguments.length <= 1) {
@@ -75,7 +89,7 @@ public final class WalkingCommand extends CommandBase {
     @Override
     public List<String> addTabCompletionOptions(ICommandSender sender, String[] arguments) {
         if (arguments.length == 1) {
-            return getListOfStringsMatchingLastWord(arguments, "reload", "report", "status", "mappings");
+            return getListOfStringsMatchingLastWord(arguments, "reload", "report", "status", "acoustics", "mappings");
         }
         if (arguments.length == 2 && "mappings".equals(arguments[0])) {
             return getListOfStringsMatchingLastWord(arguments, "all", "unmapped");
@@ -129,6 +143,7 @@ public final class WalkingCommand extends CommandBase {
     }
 
     private static void usage(ICommandSender sender) {
-        sender.addChatMessage(new ChatComponentText("Usage: /pf reload|report|status|mappings [all|unmapped] [map]"));
+        sender.addChatMessage(
+            new ChatComponentText("Usage: /pf reload|report|status|acoustics|mappings [all|unmapped] [map]"));
     }
 }

@@ -12,6 +12,7 @@ import java.util.List;
 import java.util.Map;
 import java.util.Random;
 import java.util.Set;
+import java.util.TreeMap;
 import java.util.function.LongSupplier;
 import java.util.function.Predicate;
 
@@ -48,7 +49,7 @@ public final class AcousticEngine {
         }
     }
 
-    private final Map<String, Acoustic> acoustics = new HashMap<>();
+    private final Map<String, Definition> acoustics = new HashMap<>();
     private final TimedSoundQueue pending;
     private final Random random = new Random();
     private final Player player;
@@ -72,8 +73,8 @@ public final class AcousticEngine {
     }
 
     public boolean has(String name, String event) {
-        Acoustic acoustic = acoustics.get(name);
-        return acoustic != null && acoustic.supports(event);
+        Definition definition = acoustics.get(name);
+        return definition != null && definition.acoustic.supports(event);
     }
 
     public boolean ready() {
@@ -116,8 +117,31 @@ public final class AcousticEngine {
 
     public void load(String name, JsonElement json) {
         // Parse before mutation: an invalid node must retain a lower-priority definition.
-        Acoustic acoustic = parse(json, 0);
-        acoustics.put(name, acoustic);
+        Definition definition = definition(json);
+        acoustics.put(name, definition);
+    }
+
+    /** Sorted, detached source snapshot of precisely the definitions used for playback. */
+    public Map<String, String> definitions() {
+        Map<String, String> result = new TreeMap<>();
+        for (Map.Entry<String, Definition> entry : acoustics.entrySet())
+            result.put(entry.getKey(), entry.getValue().source);
+        return Collections.unmodifiableMap(result);
+    }
+
+    private Definition definition(JsonElement json) {
+        return new Definition(parse(json, 0), json.toString());
+    }
+
+    private static final class Definition {
+
+        final Acoustic acoustic;
+        final String source;
+
+        Definition(Acoustic acoustic, String source) {
+            this.acoustic = acoustic;
+            this.source = source;
+        }
     }
 
     /** Let callers invalidate old owners before playback without dispatching newly emitted delays. */
@@ -130,9 +154,9 @@ public final class AcousticEngine {
     }
 
     public void play(String name, String event, AcousticContext context) {
-        Acoustic acoustic = acoustics.get(name);
-        if (acoustic != null && context.volume > 0 && context.isValid())
-            acoustic.play(context, event == null ? "walk" : event);
+        Definition definition = acoustics.get(name);
+        if (definition != null && context.volume > 0 && context.isValid())
+            definition.acoustic.play(context, event == null ? "walk" : event);
     }
 
     private Acoustic parse(JsonElement value, int depth) {
@@ -277,8 +301,8 @@ public final class AcousticEngine {
                     .warn("Ignoring local acoustics after {} files", MAX_LOCAL_ACOUSTICS);
                 break;
             }
-            Acoustic acoustic = local.load(file, "acoustic " + id, value -> parse(value, 0));
-            if (acoustic != null) acoustics.put(id, acoustic);
+            Definition definition = local.load(file, "acoustic " + id, this::definition);
+            if (definition != null) acoustics.put(id, definition);
         }
     }
 

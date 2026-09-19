@@ -247,6 +247,8 @@ its underscore form, including `minecraft:<display_name>`, for a modded biome wh
 
 ## Acoustic definitions
 
+Use `/pf acoustics` to export the currently loaded definitions as a ZIP resource pack. See [Diagnostics](Diagnostics.md#acoustic-export) for scope and override precedence.
+
 Definitions live in `assets/presencefootsteps/config/acoustics/<name>.json`. Override a bundled file directly;
 list additional names in `assets/presencefootsteps/config/acoustics/index.json` (a JSON array of names without `.json`).
 Indexes from all packs are combined. Volume and pitch in acoustic definitions are percentages, unlike the multipliers

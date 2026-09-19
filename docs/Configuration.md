@@ -44,3 +44,5 @@ Delayed layers and distance arrivals use bounded queues and discard stale sounds
 JSON overrides are documented in [Resource packs](Resource-packs.md), [Footprints](Footprints.md), [Equipment](Equipment.md) and [Support surfaces](Support-surfaces.md). Files are not copied from AET automatically. Use `/pf status` for the focused actor, `/pf reload` after JSON edits, and `/pf report` to save `config/pastfootsteps/diagnostics/latest-report.json` for debugging.
 
 Use `/pf mappings all` or `/pf mappings unmapped` to inspect registered block mappings. See [Diagnostics](Diagnostics.md) for named maps, output files and report limitations.
+
+`/pf acoustics` exports loaded sound definitions as a ZIP for inspection and editing. See [Acoustic export](Diagnostics.md#acoustic-export).

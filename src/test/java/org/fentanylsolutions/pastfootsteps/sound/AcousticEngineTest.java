@@ -16,6 +16,7 @@ import java.util.HashMap;
 import java.util.List;
 import java.util.Map;
 import java.util.Set;
+import java.util.zip.ZipFile;
 
 import net.minecraft.client.resources.IResource;
 import net.minecraft.client.resources.IResourceManager;
@@ -347,18 +348,138 @@ public class AcousticEngineTest {
         engine.play("base", "walk", context);
         engine.play("added", "walk", context);
         assertEquals(Arrays.asList("local", "added"), names);
+        Map<String, String> firstSnapshot = engine.definitions();
+        assertEquals("\"local\"", firstSnapshot.get("base"));
+        assertEquals(Arrays.asList("added", "base"), new ArrayList<>(firstSnapshot.keySet()));
 
         names.clear();
         Files.write(base.toPath(), "{\"type\":\"unknown\"}".getBytes(StandardCharsets.UTF_8));
         engine.reload(resources, Arrays.asList("base"), temporary.getRoot());
         engine.play("base", "walk", context);
         assertEquals(Collections.singletonList("local"), names);
+        assertEquals(firstSnapshot, engine.definitions());
 
         names.clear();
         assertTrue(base.delete());
         engine.reload(resources, Arrays.asList("base"), temporary.getRoot());
         engine.play("base", "walk", context);
         assertEquals(Collections.singletonList("pack"), names);
+        assertEquals(
+            "\"pack\"",
+            engine.definitions()
+                .get("base"));
+        assertEquals("\"local\"", firstSnapshot.get("base"));
+        engine.reload(resources, Collections.emptyList());
+        assertTrue(
+            engine.definitions()
+                .isEmpty());
+    }
+
+    @Test
+    public void snapshotUsesWinningValidLayerAndDoesNotAliasMutableInput() throws Exception {
+        Resources resources = new Resources();
+        resources.add("config/acoustics/base.json", "\"lower\"");
+        resources.add("config/acoustics/base.json", "\"higher\"");
+        resources.add("config/acoustics/base.json", "{\"type\":\"invalid\"}");
+        engine.reload(resources, Collections.singletonList("base"));
+        assertEquals(
+            "\"higher\"",
+            engine.definitions()
+                .get("base"));
+        engine.play("base", "walk", context);
+        assertEquals(Collections.singletonList("higher"), names);
+        com.google.gson.JsonObject original = new JsonParser().parse("{\"name\":\"original\"}")
+            .getAsJsonObject();
+        engine.load("base", original);
+        original.addProperty("name", "mutated");
+        assertEquals(
+            "original",
+            new JsonParser().parse(
+                engine.definitions()
+                    .get("base"))
+                .getAsJsonObject()
+                .get("name")
+                .getAsString());
+        engine.clear();
+        assertTrue(
+            engine.definitions()
+                .containsKey("base"));
+    }
+
+    @Test
+    public void exportedPackRoundTripsDefinitionsIncludingExplicitNulls() throws Exception {
+        engine.load("quiet", new JsonParser().parse("null"));
+        engine.load("events", new JsonParser().parse("{\"type\":\"events\",\"walk\":\"custom:étape\",\"run\":null}"));
+        engine.load("layers", new JsonParser().parse("[\"first\",{\"type\":\"empty\"}]"));
+        File target = new File(temporary.getRoot(), "exports/acoustics.zip");
+        assertEquals(3, AcousticExport.write(target, engine.definitions()));
+        byte[] first = Files.readAllBytes(target.toPath());
+        AcousticExport.write(target, engine.definitions());
+        assertArrayEquals(first, Files.readAllBytes(target.toPath()));
+        Resources resources = new Resources();
+        List<String> ids = new ArrayList<>();
+        try (ZipFile zip = new ZipFile(target)) {
+            assertEquals(
+                1,
+                new JsonParser().parse(zipText(zip, "pack.mcmeta"))
+                    .getAsJsonObject()
+                    .getAsJsonObject("pack")
+                    .get("pack_format")
+                    .getAsInt());
+            assertNotNull(zip.getEntry("LICENSE-MIT.txt"));
+            assertNotNull(zip.getEntry("SOURCE-NOTICE.txt"));
+            for (JsonElement id : new JsonParser()
+                .parse(zipText(zip, "assets/presencefootsteps/config/acoustics/index.json"))
+                .getAsJsonArray()) {
+                String name = id.getAsString();
+                ids.add(name);
+                String path = "config/acoustics/" + name + ".json";
+                String json = zipText(zip, "assets/presencefootsteps/" + path);
+                assertEquals(
+                    new JsonParser().parse(
+                        engine.definitions()
+                            .get(name)),
+                    new JsonParser().parse(json));
+                resources.add(path, json);
+            }
+        }
+        assertEquals(Arrays.asList("events", "layers", "quiet"), ids);
+        engine.reload(resources, ids);
+        engine.play("events", "walk", context);
+        engine.play("events", "run", context);
+        engine.play("quiet", "walk", context);
+        assertEquals(Collections.singletonList("custom:étape"), names);
+        assertTrue(engine.has("events", "run"));
+        assertTrue(engine.has("quiet"));
+    }
+
+    @Test
+    public void invalidOrEmptyExportPreservesPreviousArchive() throws Exception {
+        File target = temporary.newFile("existing.zip");
+        byte[] original = new byte[] { 1, 2, 3 };
+        Files.write(target.toPath(), original);
+        for (Map<String, String> definitions : Arrays.asList(
+            Collections.<String, String>emptyMap(),
+            Collections.singletonMap("../escape", "null"),
+            Collections.singletonMap("index", "null"))) {
+            try {
+                AcousticExport.write(target, definitions);
+                fail("Invalid export accepted");
+            } catch (IllegalArgumentException | IllegalStateException | IOException expected) {}
+            assertArrayEquals(original, Files.readAllBytes(target.toPath()));
+        }
+    }
+
+    private static String zipText(ZipFile zip, String path) throws Exception {
+        try (InputStreamReader reader = new InputStreamReader(
+            zip.getInputStream(zip.getEntry(path)),
+            StandardCharsets.UTF_8)) {
+            StringBuilder result = new StringBuilder();
+            char[] buffer = new char[2048];
+            int length;
+            while ((length = reader.read(buffer)) != -1) result.append(buffer, 0, length);
+            return result.toString();
+        }
     }
 
     private static final class Resources implements IResourceManager {

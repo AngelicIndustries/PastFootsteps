@@ -1,6 +1,7 @@
 package org.fentanylsolutions.pastfootsteps.sound;
 
 import java.io.File;
+import java.util.Map;
 
 import net.minecraft.client.resources.IResourceManager;
 
@@ -27,6 +28,10 @@ public final class SoundEngine {
 
     public void load(String id, com.google.gson.JsonElement json) {
         delegate.load(id, json);
+    }
+
+    public Map<String, String> definitions() {
+        return delegate.definitions();
     }
 
     public boolean ready() {
