@@ -143,10 +143,22 @@ as the interpolated position leaves a grounded sample.
 The audited MIT StateLookup supports a global `*`, block-state predicates and modern registry tags. PF now
 supports the global wildcard with its 1.7 metadata/substrate spellings, plus registry-name `*` patterns as a
 Forge adapter extension. `#ore:<name>` provides group membership from Forge's Ore Dictionary instead of modern
-tags. Existing `#` comment keys remain inert. State predicates still require metadata conversion; this does
-not implement derived/appearance material lookup.
+tags. Existing `#` comment keys remain inert. State predicates still require metadata conversion. Derived/appearance lookup is described below.
 
 PF preserves its established merged-key precedence rather than copying modern lookup quirks: exact entries
 precede groups, groups precede patterns, and entity maps precede the shared map. Metadata constraints win
 within a class; patterns then rank by literal specificity, with later declarations breaking ties. Rules and
 Ore Dictionary metadata membership compile at reload and cache results within a bounded snapshot-local cache.
+
+## Derived and appearance materials
+
+MIT `AssociationPool`, `DerivedBlock` and `PFSolver` supply the base/appearance lookup model. The Forge adapter
+exposes vanilla stair constructor materials through a client mixin and an opt-in static base API, plus a loaded-only
+top-face appearance provider API. Carpenter's Blocks is the first concrete cover adapter, using its public 1.7 API
+through reflection. No Carpenter's implementation or assets are copied, and the mod is optional.
+
+PF retains explicit mapping precedence, `NOT_EMITTER` termination and `UNASSIGNED` fallback. It deliberately limits
+base-to-default-substrate fallback to `.bigger`; ordinary sounds must not leak into wet/foliage/carpet channels.
+It also bounds and cycle-checks base chains, and retains the physical collision geometry for footprints.
+Modern copied-properties base metadata has no generic 1.7 equivalent. MIT's grass-sound/name-to-leaves heuristic
+remains unported; only known bases and registered appearance adapters are used here.

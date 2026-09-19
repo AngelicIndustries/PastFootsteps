@@ -2,6 +2,7 @@ package org.fentanylsolutions.pastfootsteps.world;
 
 import static org.junit.Assert.assertEquals;
 import static org.junit.Assert.assertNull;
+import static org.junit.Assert.assertSame;
 
 import java.io.ByteArrayInputStream;
 import java.io.IOException;
@@ -30,10 +31,13 @@ import net.minecraft.world.WorldSettings;
 import net.minecraft.world.WorldType;
 import net.minecraft.world.chunk.IChunkProvider;
 
+import org.fentanylsolutions.pastfootsteps.api.BlockAppearanceProviders;
+import org.fentanylsolutions.pastfootsteps.api.BlockMaterial;
 import org.junit.Test;
 
 public class FoliageResolverTest {
 
+    private static final Block AIR = new Block(Material.air) {};
     private static final Block FOLIAGE = register(253, "test:foliage", new TestBlock(false));
     private static final Block SOLID = register(254, "test:solid_plant", new TestBlock(true));
 
@@ -219,8 +223,79 @@ public class FoliageResolverTest {
         assertNull(resolver.messyFoliage(cow, ""));
     }
 
+    @Test
+    public void appearanceTracksChangedMetadataWithoutMovingPhysicalContacts() throws Exception {
+        TestWorld world = new TestWorld();
+        Block partial = register(390, "test:covered_partial", new PartialBlock());
+        world.put(0, 0, 0, partial, 0);
+        EntityCow cow = actor(world);
+        cow.boundingBox.setBounds(0.1, 0.5, 0.1, 0.9, 1.5, 0.9);
+        SurfaceResolver resolver = new SurfaceResolver(
+            materials("{\"test:foliage^1\":\"sand\",\"test:foliage^2\":\"snow\",\"test:covered_partial\":\"wood\"}"));
+        int[] coverMeta = { 1 };
+        try (AutoCloseable registration = BlockAppearanceProviders
+            .register(PartialBlock.class, (w, x, y, z, b, meta) -> new BlockMaterial(FOLIAGE, coverMeta[0]))) {
+            SurfaceResolver.Surface first = resolver.resolve(cow, 0.0, 0.0);
+            assertEquals("sand", first.material);
+            assertEquals(0.5, first.contactY, 0.000001);
+            assertEquals(0.5, first.decalY, 0.000001);
+            assertEquals(0.25, first.minX, 0.000001);
+            assertEquals(0.75, first.maxX, 0.000001);
+            assertEquals(0, first.y);
+            coverMeta[0] = 2;
+            assertEquals("snow", resolver.resolve(cow, 0.0, 0.0).material);
+            coverMeta[0] = 3;
+            SurfaceResolver.Surface nativeCover = resolver.resolve(cow, 0.0, 0.0);
+            assertNull(nativeCover.material);
+            assertEquals(FOLIAGE.stepSound.getStepResourcePath(), nativeCover.vanillaSound);
+        }
+        assertEquals("wood", resolver.resolve(cow, 0.0, 0.0).material);
+    }
+
+    @Test
+    public void appearanceSkipsUnloadedBlocksAndIsolatesBrokenProviders() throws Exception {
+        TestWorld world = new TestWorld();
+        world.put(0, 0, 0, SOLID, 0);
+        int[] calls = { 0 };
+        try (AutoCloseable broken = BlockAppearanceProviders.register(TestBlock.class, (w, x, y, z, b, meta) -> {
+            calls[0]++;
+            throw new IllegalStateException("broken optional adapter");
+        });
+            AutoCloseable working = BlockAppearanceProviders
+                .register(TestBlock.class, (w, x, y, z, b, meta) -> new BlockMaterial(FOLIAGE, 2))) {
+            world.loaded = false;
+            assertSame(SOLID, BlockAppearanceProviders.resolve(world, 0, 0, 0, SOLID, 0).block);
+            assertEquals(0, calls[0]);
+            world.loaded = true;
+            BlockMaterial result = BlockAppearanceProviders.resolve(world, 0, 0, 0, SOLID, 0);
+            assertSame(FOLIAGE, result.block);
+            assertEquals(2, result.metadata);
+            assertEquals(1, calls[0]);
+        }
+        assertSame(SOLID, BlockAppearanceProviders.resolve(world, 0, 0, 0, SOLID, 0).block);
+    }
+
+    private static final class PartialBlock extends Block {
+
+        PartialBlock() {
+            super(Material.wood);
+            setStepSound(Block.soundTypeWood);
+        }
+
+        @Override
+        public AxisAlignedBB getCollisionBoundingBoxFromPool(World world, int x, int y, int z) {
+            return AxisAlignedBB.getBoundingBox(x + 0.25, y, z + 0.25, x + 0.75, y + 0.5, z + 0.75);
+        }
+    }
+
     private static EntityCow actor(TestWorld world) {
-        EntityCow cow = new EntityCow(world);
+        EntityCow cow = new EntityCow(world) {
+
+            @Override
+            public boolean isOnLadder() {
+                return false;
+            }
+        };
         cow.boundingBox.setBounds(0.1D, 1.0D, 0.1D, 0.9D, 2.0D, 0.9D);
         cow.posX = 0.5D;
         cow.posY = 1.0D;
@@ -292,13 +367,19 @@ public class FoliageResolverTest {
         }
 
         @Override
+        public boolean checkChunksExist(int minX, int minY, int minZ, int maxX, int maxY, int maxZ) {
+            return loaded;
+        }
+
+        @Override
         public boolean blockExists(int x, int y, int z) {
             return loaded && blocks.containsKey(key(x, y, z));
         }
 
         @Override
         public Block getBlock(int x, int y, int z) {
-            return blocks.get(key(x, y, z));
+            Block block = blocks.get(key(x, y, z));
+            return block == null ? AIR : block;
         }
 
         @Override

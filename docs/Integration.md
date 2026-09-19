@@ -23,3 +23,31 @@ Use these predicates rather than assuming every jump or landing has one enum val
 Contacts use actor-relative gait geometry and collision-aware world positions. They do not claim to match arbitrary renderer bones. Unknown creatures retain native sounds until an entity profile explicitly selects them. Resource-pack profiles are the normal integration path for ordinary bipeds and quadrupeds; specialized anatomy and moving contraptions require a concrete adapter.
 
 Use `/pf status`, `/pf reload`, `/pf report` and the contact HUD/markers during development. The local JSON report includes effective profiles, gait phase, material, authority source, budgets and resource diagnostics, without player names or server addresses.
+
+## Block materials
+
+`org.fentanylsolutions.pastfootsteps.api.DerivedBlock` describes a static base material. Implement
+`getBaseMaterial(int metadata)` on a block and return `new BlockMaterial(baseBlock, baseMetadata)`, or `null`
+when no base is known. Metadata must be in `0..15`. PF supplies this for vanilla `BlockStairs` and its subclasses.
+Explicit wrapper mappings are authoritative; missing or `UNASSIGNED` mappings can inherit from the base.
+Base lookup is bounded and cycle-safe. Keep this method cheap and free of world access.
+
+For position-dependent covers, register a top-face appearance provider during client initialization:
+
+```java
+AutoCloseable handle = BlockAppearanceProviders.register(MyCoveredBlock.class,
+    (world, x, y, z, physicalBlock, metadata) -> {
+        // Read the existing tile's exposed top cover without loading any chunks.
+        return new BlockMaterial(coverBlock, coverMetadata);
+    });
+```
+
+Return `null` when the provider does not apply. Registration order decides precedence: the first non-null,
+non-air result wins. Closing the handle removes that provider. Runtime/linkage failures are isolated and allow
+later providers or the original block to resolve. PF checks that the location is loaded before invoking providers;
+providers must also avoid loading neighbors. Do not mutate the world or retain tile/entity instances.
+
+Appearance is queried before all block-map lookups, without persistent tile-cover caching. It replaces material
+identity for sounds, not physical geometry. The represented material's `SoundType` supplies native fallback.
+A provider represents a block's top face; contact-specific triangle or multipart selection needs a richer future
+adapter. Do not use renderer textures or pick-block results as material guesses.

@@ -5,6 +5,7 @@ import java.io.IOException;
 import java.io.InputStreamReader;
 import java.io.Reader;
 import java.nio.charset.StandardCharsets;
+import java.util.ArrayList;
 import java.util.Collections;
 import java.util.LinkedHashMap;
 import java.util.List;
@@ -20,6 +21,8 @@ import net.minecraft.util.ResourceLocation;
 import net.minecraft.world.biome.BiomeGenBase;
 
 import org.fentanylsolutions.pastfootsteps.PastFootsteps;
+import org.fentanylsolutions.pastfootsteps.api.BlockMaterial;
+import org.fentanylsolutions.pastfootsteps.api.DerivedBlock;
 import org.fentanylsolutions.pastfootsteps.profile.LocalJsonOverrides;
 
 import com.google.gson.Gson;
@@ -107,23 +110,76 @@ public final class MaterialLibrary {
         return lookup(block, meta, substrate, "");
     }
 
-    /** Actor map, then shared map, then primitive fallback. Explicit UNASSIGNED skips the block-map stage. */
+    /** Actor map, shared map, known base materials, then primitive fallback. */
     public String lookup(Block block, int meta, String substrate, String materialMap) {
-        if (block == null) return null;
-        Object registeredName = Block.blockRegistry.getNameForObject(block);
-        if (!(registeredName instanceof String)) return null;
+        return resolve(block, meta, substrate, materialMap).name;
+    }
 
+    /** Also retains the chosen sound source for native fallback on represented materials. */
+    public Association resolve(Block block, int meta, String substrate, String materialMap) {
+        if (block == null || block.getMaterial() == net.minecraft.block.material.Material.air)
+            return new Association(null, null);
         Snapshot current = snapshot;
-        String name = ((String) registeredName).toLowerCase(Locale.ROOT);
         String suffix = normalizeSubstrate(substrate);
-        BlockMaterialMap actorMap = current.actorBlocks.get(materialMap);
-        String result = actorMap == null ? null : actorMap.lookup(name, meta, suffix);
-        if (result == null) result = current.blocks.lookup(name, meta, suffix);
-        if (result != null && !"UNASSIGNED".equals(result)) return result;
+        List<BlockMaterial> chain = new ArrayList<>();
+        BlockMaterial state = new BlockMaterial(block, meta & 15);
+        while (state != null && chain.size() < 8) {
+            boolean seen = false;
+            for (BlockMaterial previous : chain)
+                if (previous.block == state.block && previous.metadata == state.metadata) seen = true;
+            if (seen || state.block.getMaterial() == net.minecraft.block.material.Material.air) break;
+            chain.add(state);
+            String result = explicit(current, state, suffix, materialMap);
+            if (result != null && !"UNASSIGNED".equals(result)) return new Association(result, state.block.stepSound);
+            // A derived fence/post may inherit a base's ordinary surface, but supplementary channels
+            // must not acquire ordinary walking sounds just because their wrapper has a base.
+            if (chain.size() > 1 && "bigger".equals(suffix)) {
+                result = explicit(current, state, "", materialMap);
+                if (result != null && !"UNASSIGNED".equals(result))
+                    return new Association(result, state.block.stepSound);
+            }
+            try {
+                state = state.block instanceof DerivedBlock
+                    ? ((DerivedBlock) state.block).getBaseMaterial(state.metadata)
+                    : null;
+            } catch (RuntimeException | LinkageError ignored) {
+                state = null;
+            }
+        }
+        if (suffix.isEmpty() || "bigger".equals(suffix)) {
+            // Prefer a known base's primitive sound over the wrapper's generic construction sound.
+            for (int i = 1; i < chain.size(); i++) {
+                String result = primitive(current.primitives, chain.get(i).block);
+                if (result != null && !"UNASSIGNED".equals(result))
+                    return new Association(result, chain.get(i).block.stepSound);
+            }
+            String result = primitive(current.primitives, block);
+            if ("UNASSIGNED".equals(result)) result = null;
+            return new Association(
+                result,
+                result == null && chain.size() > 1 ? chain.get(1).block.stepSound : block.stepSound);
+        }
+        return new Association(null, block.stepSound);
+    }
 
-        if (!suffix.isEmpty() && !"bigger".equals(suffix)) return null;
-        result = primitive(current.primitives, block);
-        return "UNASSIGNED".equals(result) ? null : result;
+    private static String explicit(Snapshot current, BlockMaterial state, String suffix, String materialMap) {
+        Object registeredName = Block.blockRegistry.getNameForObject(state.block);
+        if (!(registeredName instanceof String)) return null;
+        String name = ((String) registeredName).toLowerCase(Locale.ROOT);
+        BlockMaterialMap actorMap = current.actorBlocks.get(materialMap);
+        String result = actorMap == null ? null : actorMap.lookup(name, state.metadata, suffix);
+        return result == null ? current.blocks.lookup(name, state.metadata, suffix) : result;
+    }
+
+    public static final class Association {
+
+        public final String name;
+        public final Block.SoundType sound;
+
+        private Association(String name, Block.SoundType sound) {
+            this.name = name;
+            this.sound = sound;
+        }
     }
 
     public float biomeVolume(BiomeGenBase biome) {

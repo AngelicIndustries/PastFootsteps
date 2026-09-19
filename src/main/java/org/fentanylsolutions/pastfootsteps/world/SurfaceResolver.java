@@ -19,6 +19,8 @@ import net.minecraft.util.AxisAlignedBB;
 import net.minecraft.util.MathHelper;
 import net.minecraft.world.World;
 
+import org.fentanylsolutions.pastfootsteps.api.BlockAppearanceProviders;
+import org.fentanylsolutions.pastfootsteps.api.BlockMaterial;
 import org.fentanylsolutions.pastfootsteps.api.SurfaceSupportProviders;
 
 /** Collision-aware substrate selection adapted from the MIT Presence Footsteps PFSolver. */
@@ -142,18 +144,26 @@ public final class SurfaceResolver {
                         if (score >= bestScore) continue;
 
                         int meta = world.getBlockMetadata(x, y, z);
-                        String name = materials.lookup(block, meta, "carpet", materialMap);
-                        if (name == null || !emitter(name)) {
-                            name = materials.lookup(block, meta, box.maxY > y + 1.01D ? "bigger" : "", materialMap);
-                            if (name == null) name = materials.lookup(block, meta, "", materialMap);
+                        BlockMaterial appearance = BlockAppearanceProviders.resolve(world, x, y, z, block, meta);
+                        MaterialLibrary.Association association = materials
+                            .resolve(appearance.block, appearance.metadata, "carpet", materialMap);
+                        if (!emitter(association.name)) {
+                            association = materials.resolve(
+                                appearance.block,
+                                appearance.metadata,
+                                box.maxY > y + 1.01D ? "bigger" : "",
+                                materialMap);
+                            if (association.name == null)
+                                association = materials.resolve(appearance.block, appearance.metadata, "", materialMap);
                         }
-                        String wet = materials.lookup(block, meta, "wet", materialMap);
+                        String name = association.name;
+                        String wet = materials.lookup(appearance.block, appearance.metadata, "wet", materialMap);
                         if (wet == null) wet = "mudfine,splash";
                         boolean exposed = !submerged && world.isRaining()
                             && world.canBlockSeeTheSky(x, floor(feetY + 0.1D), z)
                             && world.getBiomeGenForCoords(x, z)
                                 .canSpawnLightningBolt();
-                        Block.SoundType step = block.stepSound;
+                        Block.SoundType step = association.sound;
                         best = new Surface(
                             name,
                             wet,
@@ -182,7 +192,9 @@ public final class SurfaceResolver {
             int x = floor(actor.posX), y = floor(actor.boundingBox.minY), z = floor(actor.posZ);
             if (world.blockExists(x, y, z)) {
                 Block block = world.getBlock(x, y, z);
-                String name = materials.lookup(block, world.getBlockMetadata(x, y, z), "", materialMap);
+                BlockMaterial appearance = BlockAppearanceProviders
+                    .resolve(world, x, y, z, block, world.getBlockMetadata(x, y, z));
+                String name = materials.lookup(appearance.block, appearance.metadata, "", materialMap);
                 if (name == null) name = "ladder";
                 return new Surface(
                     name,
@@ -241,11 +253,18 @@ public final class SurfaceResolver {
         double collisionTop = overlay instanceof BlockSnow ? y + (meta & 7) * 0.125D : y;
         if (Math.abs(physical.contactY - collisionTop) > OVERLAY_EPSILON
             && Math.abs(physical.contactY - y) > OVERLAY_EPSILON) return physical;
-        String material = materials.lookup(overlay, meta, overlay instanceof BlockCarpet ? "carpet" : "", materialMap);
-        if (!emitter(material)) material = materials.lookup(overlay, meta, "", materialMap);
-        if (!emitter(material)) return physical;
-        String wet = materials.lookup(overlay, meta, "wet", materialMap);
-        Block.SoundType step = overlay.stepSound;
+        BlockMaterial appearance = BlockAppearanceProviders.resolve(world, x, y, z, overlay, meta);
+        MaterialLibrary.Association association = materials.resolve(
+            appearance.block,
+            appearance.metadata,
+            overlay instanceof BlockCarpet ? "carpet" : "",
+            materialMap);
+        if (!emitter(association.name))
+            association = materials.resolve(appearance.block, appearance.metadata, "", materialMap);
+        if (!emitter(association.name)) return physical;
+        String material = association.name;
+        String wet = materials.lookup(appearance.block, appearance.metadata, "wet", materialMap);
+        Block.SoundType step = association.sound;
         return new Surface(
             material,
             wet == null ? physical.wetMaterial : wet,
@@ -406,7 +425,9 @@ public final class SurfaceResolver {
         }
         if (!world.blockExists(x, y, z) || x == surface.x && y == surface.y && z == surface.z) return null;
         Block block = world.getBlock(x, y, z);
-        String name = materials.lookup(block, world.getBlockMetadata(x, y, z), "foliage", materialMap);
+        BlockMaterial appearance = BlockAppearanceProviders
+            .resolve(world, x, y, z, block, world.getBlockMetadata(x, y, z));
+        String name = materials.lookup(appearance.block, appearance.metadata, "foliage", materialMap);
         if (!emitter(name)) return null;
         float minX = (float) block.getBlockBoundsMinX(), minY = (float) block.getBlockBoundsMinY(),
             minZ = (float) block.getBlockBoundsMinZ(), maxX = (float) block.getBlockBoundsMaxX(),
@@ -466,9 +487,11 @@ public final class SurfaceResolver {
                     if (!world.blockExists(x, y, z)) continue;
                     Block block = world.getBlock(x, y, z);
                     int meta = world.getBlockMetadata(x, y, z);
-                    if (messyOnly && !"MESSY_GROUND".equals(materials.lookup(block, meta, "messy", materialMap)))
+                    BlockMaterial appearance = BlockAppearanceProviders.resolve(world, x, y, z, block, meta);
+                    if (messyOnly && !"MESSY_GROUND"
+                        .equals(materials.lookup(appearance.block, appearance.metadata, "messy", materialMap)))
                         continue;
-                    String name = materials.lookup(block, meta, "foliage", materialMap);
+                    String name = materials.lookup(appearance.block, appearance.metadata, "foliage", materialMap);
                     if (emitter(name)) names.add(name);
                 }
             }

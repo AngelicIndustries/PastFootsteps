@@ -2,6 +2,7 @@ package org.fentanylsolutions.pastfootsteps.world;
 
 import static org.junit.Assert.assertEquals;
 import static org.junit.Assert.assertNull;
+import static org.junit.Assert.assertSame;
 import static org.junit.Assert.assertTrue;
 
 import java.io.ByteArrayInputStream;
@@ -32,6 +33,8 @@ import net.minecraft.util.ResourceLocation;
 import net.minecraft.world.biome.BiomeGenBase;
 import net.minecraftforge.oredict.OreDictionary;
 
+import org.fentanylsolutions.pastfootsteps.api.BlockMaterial;
+import org.fentanylsolutions.pastfootsteps.api.DerivedBlock;
 import org.junit.Rule;
 import org.junit.Test;
 import org.junit.rules.TemporaryFolder;
@@ -366,6 +369,85 @@ public class MaterialLibraryTest {
         assertEquals("exact", library.lookup(STONE, 1, ""));
     }
 
+    @Test
+    public void derivedBlockInheritsBaseMetadataAfterWrapperMiss() {
+        Block base = register(500, "test:derived_metadata_base", new TestBlock());
+        Block wrapper = register(501, "test:derived_metadata_wrapper", new DerivedTestBlock(base, true));
+        Resources resources = new Resources();
+        resources.add("config/blockmap.json", "{\"test:derived_metadata_base^7\":\"base-meta\"}");
+
+        assertEquals("base-meta", load(resources).lookup(wrapper, 7, ""));
+    }
+
+    @Test
+    public void wrapperExplicitAndNotEmitterEntriesBeatBaseEntries() {
+        Block explicitBase = register(502, "test:derived_explicit_base", new TestBlock());
+        Block explicit = register(503, "test:derived_explicit_wrapper", new DerivedTestBlock(explicitBase, false));
+        Block silentBase = register(504, "test:derived_silent_base", new TestBlock());
+        Block silent = register(505, "test:derived_silent_wrapper", new DerivedTestBlock(silentBase, false));
+        Resources resources = new Resources();
+        resources.add(
+            "config/blockmap.json",
+            "{\"test:derived_explicit_base\":\"base\",\"test:derived_explicit_wrapper\":\"wrapper\","
+                + "\"test:derived_silent_base\":\"base\",\"test:derived_silent_wrapper\":\"NOT_EMITTER\"}");
+        MaterialLibrary library = load(resources);
+
+        assertEquals("wrapper", library.lookup(explicit, 0, ""));
+        assertEquals("NOT_EMITTER", library.lookup(silent, 0, ""));
+    }
+
+    @Test
+    public void derivedUnassignedFallsThroughToActorBaseMap() {
+        Block base = register(506, "test:derived_actor_base", new TestBlock());
+        Block wrapper = register(507, "test:derived_actor_wrapper", new DerivedTestBlock(base, false));
+        Resources resources = new Resources();
+        resources.add(
+            "config/blockmap.json",
+            "{\"test:derived_actor_base\":\"shared\",\"test:derived_actor_wrapper\":\"UNASSIGNED\"}");
+        resources.add("config/materials/hooves.json", "{\"test:derived_actor_base\":\"actor\"}");
+        MaterialLibrary library = new MaterialLibrary();
+        library.reload(resources, null, Collections.singleton("hooves"));
+
+        assertEquals("actor", library.lookup(wrapper, 0, "", "hooves"));
+        assertEquals("shared", library.lookup(wrapper, 0, ""));
+    }
+
+    @Test
+    public void derivedBaseOrdinaryMappingDoesNotLeakIntoSupplementaryChannels() {
+        Block base = register(508, "test:derived_supplementary_base", new TestBlock());
+        Block wrapper = register(509, "test:derived_supplementary_wrapper", new DerivedTestBlock(base, false));
+        Resources resources = new Resources();
+        resources.add("config/blockmap.json", "{\"test:derived_supplementary_base\":\"grass\"}");
+
+        MaterialLibrary library = load(resources);
+        assertEquals("grass", library.lookup(wrapper, 0, ""));
+        assertNull(library.lookup(wrapper, 0, "wet"));
+        assertNull(library.lookup(wrapper, 0, "foliage"));
+    }
+
+    @Test
+    public void derivedCyclesTerminateWithoutRecursion() {
+        DerivedTestBlock left = new DerivedTestBlock(null, false);
+        DerivedTestBlock right = new DerivedTestBlock(left, false);
+        left.base = new BlockMaterial(right, 0);
+        Block registered = register(510, "test:derived_cycle_left", left);
+        register(511, "test:derived_cycle_right", right);
+
+        assertNull(load(new Resources()).lookup(registered, 0, ""));
+    }
+
+    @Test
+    public void derivedPrimitiveFallbackRetainsBaseNativeSoundType() {
+        Block base = register(512, "test:derived_native_base", new TestBlock(Block.soundTypeWood));
+        Block wrapper = register(513, "test:derived_native_wrapper", new DerivedTestBlock(base, false));
+        Resources resources = new Resources();
+        resources.add("config/primitivemap.json", "{\"wood\":\"base-native\"}");
+
+        MaterialLibrary.Association association = load(resources).resolve(wrapper, 0, "", "");
+        assertEquals("base-native", association.name);
+        assertSame(base.stepSound, association.sound);
+    }
+
     private static final class TestGroups implements BlockMaterialMap.Groups {
 
         private final Map<String, List<ItemStack>> entries = new HashMap<>();
@@ -402,8 +484,31 @@ public class MaterialLibraryTest {
     private static final class TestBlock extends Block {
 
         TestBlock() {
+            this(Block.soundTypeStone);
+        }
+
+        TestBlock(Block.SoundType sound) {
+            super(Material.rock);
+            setStepSound(sound);
+        }
+    }
+
+    private static final class DerivedTestBlock extends Block implements DerivedBlock {
+
+        private BlockMaterial base;
+        private final boolean preserveMetadata;
+
+        DerivedTestBlock(Block base, boolean preserveMetadata) {
             super(Material.rock);
             setStepSound(Block.soundTypeStone);
+            this.base = base == null ? null : new BlockMaterial(base, 0);
+            this.preserveMetadata = preserveMetadata;
+        }
+
+        @Override
+        public BlockMaterial getBaseMaterial(int metadata) {
+            if (base == null) return null;
+            return preserveMetadata ? new BlockMaterial(base.block, metadata & 15) : base;
         }
     }
 

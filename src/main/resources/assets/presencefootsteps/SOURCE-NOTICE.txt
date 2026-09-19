@@ -90,6 +90,14 @@ are Forge-specific extensions, using 1.7 metadata and Ore Dictionary
 membership. Existing PF exact-key and entity-map priority remain intact;
 modern block-state predicates and tag names still require conversion.
 
+Derived/base and appearance lookup follows AssociationPool, DerivedBlock,
+MStairsBlock and PFSolver at the audited MIT revisions. The Forge adapter
+uses 1.7 stair constructor fields, bounded static base chains and a public
+top-face provider API, preserving physical collision geometry. Supplementary
+substrates do not inherit ordinary walking sounds. Carpenter's Blocks
+support calls its public API by reflection; no Carpenter's source or assets
+are copied. The MIT name-to-leaves heuristic is not included.
+
 The 455 OGG files imported from that namespace are byte-identical MIT-source
 assets and are all mono. Its imported sound event categories were changed
 from "master" to the existing 1.7.10 "player" category. Local aliases cover

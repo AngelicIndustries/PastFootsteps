@@ -28,6 +28,7 @@ public class ClientProxy extends CommonProxy {
 
     @Override
     public void init() {
+        org.fentanylsolutions.pastfootsteps.client.compat.CarpentersBlocksCompat.init();
         ClientRegistry.registerKeyBinding(toggle);
         net.minecraftforge.client.ClientCommandHandler.instance.registerCommand(new WalkingCommand());
         FMLCommonHandler.instance()

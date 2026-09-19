@@ -24,9 +24,9 @@ replace entries with the same key. If one layer is malformed, that layer is skip
 special value such as `NOT_EMITTER`, `MESSY_GROUND`, `VANILLA`, or `UNASSIGNED`. Acoustic names are normalized to
 lowercase; special values are recognized regardless of case. `NON_EMITTER` is an alias for `NOT_EMITTER`.
 
-`UNASSIGNED` explicitly clears a block association and continues to primitive fallback for ordinary surfaces and
+`UNASSIGNED` explicitly clears a block association and continues to known base-material mappings, then primitive fallback for ordinary surfaces and
 `bigger` lookups. It does not revive a less-specific or lower-pack block entry. For supplementary substrates such
-as `foliage` or `wet`, it returns no association; the resolver may still use its usual wet-layer default.
+as `foliage` or `wet`, only matching base substrates can supply an association; the resolver may still use its usual wet-layer default.
 `NOT_EMITTER` is an explicit non-emitter and does not fall back to a primitive acoustic. On the `carpet` substrate,
 non-emitting overlays still allow the underlying surface to be considered. `VANILLA` requests native step playback
 for a normal surface rather than a PF acoustic. `MESSY_GROUND` on the `.messy` substrate enables the foliage entry strategy described below.
@@ -78,6 +78,29 @@ and deleting the local file restores the pack definitions. These selectors add n
 bundled material mappings by default. MIT PF's global wildcard and tag grouping motivate this adapter;
 registry-name patterns and Ore Dictionary syntax are PF's Forge-specific extensions.
 
+## Base materials and covers
+
+Unmapped stairs inherit their constructor's base block and metadata, including modded stairs extending vanilla
+`BlockStairs`. A matching rule on the stair itself still wins, including group/wildcard rules and `NOT_EMITTER`.
+Set a stair mapping to `UNASSIGNED` to deliberately try its base. Base states use the same entity map before the
+shared map. Base primitive sounds take priority over the stair's primitive; `VANILLA` inherited from a base plays
+that base's native step sound. Ordinary vanilla stairs retain their bundled explicit mappings.
+
+Only `.bigger` may also use the base's ordinary mapping. Supplementary channels such as `.wet`, `.foliage`,
+`.messy` and `.carpet` require a matching substrate on the base, so they cannot accidentally duplicate its normal
+walking sound. Base chains are bounded to eight states and stop at cycles or invalid optional providers.
+
+When Carpenter's Blocks is installed, PF asks its top-face API for the cover or full-face overlay before material
+lookup. Cover metadata is retained and changes are observed at the next contact without a resource reload. With
+no cover, Carpenter's frame remains the material source. Carpenter's API may represent unsafe tile-entity covers
+as planks; PF respects that fallback. This integration does not infer which individual triangle
+of a sloped or mixed-face block a foot touches. Other camouflage mods need an adapter using the
+[block material APIs](Integration.md#block-materials).
+
+Appearance affects sound selection only. Collision/contact bounds and footprint height remain those of the real
+block; PF never substitutes a full cube's geometry for a covered slab, stair or slope. These integrations add no
+CFG settings or required mods.
+
 ## Per-entity material maps
 
 Entity profiles can select a named block map using `materialMap`. For example, add this profile to a local
@@ -113,8 +136,8 @@ Several profiles can share a map. Children inherit `materialMap`; explicit `"mat
 map for that profile. No bundled profiles select a custom map by default.
 
 For each substrate, the selected map is checked first, then the shared block map if there is no matching entry,
-then the shared primitive map where applicable. An entity-map generic match therefore overrides a shared metadata
-match. Explicit `UNASSIGNED` bypasses the shared block map and proceeds to primitive fallback; omit an entry to use
+then known base-material mappings and the shared primitive map where applicable. An entity-map generic match therefore overrides a shared metadata
+match. Explicit `UNASSIGNED` bypasses the shared block map and proceeds to base-material/primitive fallback; omit an entry to use
 the shared block mapping. `NOT_EMITTER`, `VANILLA` and explicit empty acoustic definitions retain their distinct meanings.
 Maps apply to normal contacts, wet layers, foliage, ladders and snow/carpet overlays. Explicit materials provided
 by entity-support integrations remain authoritative. Footprint geometry and contact timing still follow PF's engine.
