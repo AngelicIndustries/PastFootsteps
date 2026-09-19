@@ -194,10 +194,20 @@ pause/reload cancellation, or the separate distance-arrival expiry.
 ## Entity and gait profiles
 
 Bundled entity profiles cover `Player`; bipedal `Zombie`, `Skeleton`, `PigZombie`, `Enderman`, `Witch`, `Villager`,
-and `VillagerGolem`; `Chicken`; four-legged `Creeper`, `Cow`, `MushroomCow`, `Pig`, `Sheep`, `Wolf`, and `Ozelot`; and
+`VillagerGolem`, `Giant`, `LavaSlime` (magma cube), `Slime` and `Chicken`; four-legged `Creeper`, `Cow`, `MushroomCow`,
+`Pig`, `Sheep`, `Wolf`, and `Ozelot`; and
 `EntityHorse`. The horse gait uses diagonal running contact groups for a trot. Paw and hoof gaits use different
 front/rear geometry, and every supplied profile retains child stride scaling. Other registered entities keep native
-sounds unless explicitly matched, including spiders, slimes, magma cubes, bats, squids, ghasts, and flying bosses.
+sounds unless explicitly matched, including spiders, bats, squids, ghasts, and flying bosses.
+
+`Giant` and `LavaSlime` use the biped mapping found in both audited MIT branches. Magma cubes use
+PF's existing physical takeoff/landing contacts; there is no separate hopping clock. Regular `Slime`
+uses the same contact path as a PF addition beyond the audited MIT mappings. Native slime and magma
+cube jump, squish, hurt and death sounds remain active. No footprint style is assigned to either.
+Giants retain the existing square footprint rule. The profiles use nominal 1.7 widths of 3.6 and
+0.6 blocks respectively, so larger magma cubes receive the existing size-sensitive pitch adjustment.
+Profile volume/stride values are Forge-adapter tuning, not additional upstream sound assets.
+
 IDs are the exact, case-sensitive Minecraft 1.7 entity names, such as `MushroomCow`, `Ozelot`, and `EntityHorse`,
 rather than modern names such as `minecraft:cow`. `Player` is a special alias for players.
 

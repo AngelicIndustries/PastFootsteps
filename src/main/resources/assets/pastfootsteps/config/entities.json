@@ -136,6 +136,30 @@
       "runSpeed": 0.20,
       "volume": 1.0,
       "referenceWidth": 1.4
+    },
+    "Giant": {
+      "gait": "biped",
+      "strideMultiplier": 0.95,
+      "childScale": 0.50,
+      "runSpeed": 0.20,
+      "volume": 1.0,
+      "referenceWidth": 3.6
+    },
+    "LavaSlime": {
+      "gait": "biped",
+      "strideMultiplier": 1.0,
+      "childScale": 0.50,
+      "runSpeed": 0.20,
+      "volume": 0.8,
+      "referenceWidth": 0.6
+    },
+    "Slime": {
+      "gait": "biped",
+      "strideMultiplier": 1.0,
+      "childScale": 0.50,
+      "runSpeed": 0.20,
+      "volume": 0.8,
+      "referenceWidth": 0.6
     }
   }
 }

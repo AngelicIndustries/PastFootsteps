@@ -121,3 +121,19 @@ Distance arrival follows MIT ImmediateSoundPlayer: strictly over 10 blocks, dela
 its own bounded queue instead of Minecraft's unmanaged delayed queue. Sounds retain snapshot source
 positions and actor validity. Arrival queues also expire stale work; nested scheduling cannot apply
 the distance delay twice. Pausing singleplayer, changing worlds and reloading clears pending work.
+
+## Giant and magma cube profiles
+
+Both audited MIT locomotion maps select BIPED for `minecraft:giant` and `minecraft:magma_cube`.
+The Forge profiles now match those through legacy IDs `Giant` and `LavaSlime`. Existing contacts
+supply ground steps and physical takeoff/landing timing; no specialized hopping generator was
+present in the audited upstream. Magma cube native body sounds remain outside PF surface/fall
+suppression. Regular `Slime` now also has a profile, a user-requested PF addition beyond the audited
+MIT mappings. Its normal 0.42 upward jump velocity uses the same physical contact tracker, with native
+body sounds preserved and no footprints. Nominal widths come from the 1.7
+entity classes (3.6 for Giants, 0.6 for size-one cubes); cube dimensions scale with slime size.
+
+Synchronized hop interpolation keeps airborne-to-ground transitions airborne until the grounded
+sample's position is reached. This prevents material landing contacts from being emitted above the
+block and discarded by the bounded surface resolver. Departure likewise becomes airborne as soon
+as the interpolated position leaves a grounded sample.

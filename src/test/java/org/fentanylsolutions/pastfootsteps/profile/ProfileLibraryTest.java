@@ -28,11 +28,15 @@ import net.minecraft.client.resources.IResource;
 import net.minecraft.client.resources.IResourceManager;
 import net.minecraft.client.resources.data.IMetadataSection;
 import net.minecraft.entity.Entity;
+import net.minecraft.entity.monster.EntityGiantZombie;
+import net.minecraft.entity.monster.EntityMagmaCube;
 import net.minecraft.entity.monster.EntitySkeleton;
+import net.minecraft.entity.monster.EntitySlime;
 import net.minecraft.entity.passive.EntityAnimal;
 import net.minecraft.entity.passive.EntityCow;
 import net.minecraft.entity.passive.EntityHorse;
 import net.minecraft.entity.passive.EntityPig;
+import net.minecraft.nbt.NBTTagCompound;
 import net.minecraft.profiler.Profiler;
 import net.minecraft.util.ResourceLocation;
 import net.minecraft.world.World;
@@ -41,6 +45,7 @@ import net.minecraft.world.WorldSettings;
 import net.minecraft.world.WorldType;
 import net.minecraft.world.chunk.IChunkProvider;
 
+import org.fentanylsolutions.pastfootsteps.movement.ContactTracker;
 import org.fentanylsolutions.pastfootsteps.profile.GaitDefinition.Contact;
 import org.junit.Rule;
 import org.junit.Test;
@@ -289,9 +294,8 @@ public class ProfileLibraryTest {
 
         for (String id : new String[] { "Zombie", "Skeleton", "PigZombie", "Enderman", "Witch", "Villager",
             "VillagerGolem", "Chicken", "Creeper", "Cow", "MushroomCow", "Pig", "Sheep", "Wolf", "Ozelot",
-            "EntityHorse" }) assertNotNull(id, library.resolve(id));
+            "EntityHorse", "Giant", "LavaSlime", "Slime" }) assertNotNull(id, library.resolve(id));
         assertNull(library.resolve("Spider"));
-        assertNull(library.resolve("LavaSlime"));
         assertNull(library.resolve("Bat"));
 
         Contact[] horseTrot = library.resolve("EntityHorse").gait.contacts(true);
@@ -300,6 +304,83 @@ public class ProfileLibraryTest {
         assertEquals(0.5, horseTrot[1].phase, 0.0);
         assertEquals(1.0, horseTrot[2].phase, 0.0);
         assertEquals(1.0, horseTrot[3].phase, 0.0);
+    }
+
+    @Test
+    public void giantAndSlimeProfilesResolveActualLegacyRegistryIds() throws IOException {
+        Resources resources = new Resources();
+        resources.add("config/gaits.json", resource("/assets/pastfootsteps/config/gaits.json"));
+        resources.add("config/entities.json", resource("/assets/pastfootsteps/config/entities.json"));
+        ProfileLibrary library = load(resources);
+        World world = new TestWorld();
+        EntityGiantZombie giant = new EntityGiantZombie(world);
+        EntityProfile giantProfile = library.resolve(giant);
+        assertEquals("Giant", giantProfile.id);
+        assertEquals("biped", giantProfile.gait.id);
+        assertEquals(giant.width, giantProfile.referenceWidth, 0.00001);
+        for (EntitySlime cube : new EntitySlime[] { new EntityMagmaCube(world), new EntitySlime(world) }) {
+            EntityProfile cubeProfile = library.resolve(cube);
+            assertEquals(cube instanceof EntityMagmaCube ? "LavaSlime" : "Slime", cubeProfile.id);
+            assertEquals("biped", cubeProfile.gait.id);
+            for (int size : new int[] { 1, 2, 4 }) {
+                NBTTagCompound nbt = new NBTTagCompound();
+                nbt.setInteger("Size", size - 1);
+                cube.readEntityFromNBT(nbt);
+                assertSame(cubeProfile, library.resolve(cube));
+                assertEquals(size, cube.width / cubeProfile.referenceWidth, 0.00001);
+            }
+        }
+    }
+
+    @Test
+    public void slimeProfilesUseTakeoffAndLandingWithoutAirborneWalking() throws IOException {
+        Resources resources = new Resources();
+        resources.add("config/gaits.json", resource("/assets/pastfootsteps/config/gaits.json"));
+        resources.add("config/entities.json", resource("/assets/pastfootsteps/config/entities.json"));
+        ProfileLibrary library = load(resources);
+        for (String id : new String[] { "LavaSlime", "Slime" }) {
+            EntityProfile profile = library.resolve(id);
+            for (int size : new int[] { 1, 2, 4 }) {
+                ContactTracker tracker = new ContactTracker(profile.gait, 1);
+                List<org.fentanylsolutions.pastfootsteps.movement.Contact> contacts = new ArrayList<>();
+                sample(tracker, profile, 0, 0, true, contacts);
+                double y = 0, x = 0, velocity = 0.42 + (id.equals("LavaSlime") ? size * 0.1 : 0);
+                do {
+                    y += velocity;
+                    x += 0.1;
+                    sample(tracker, profile, x, Math.max(0, y), y <= 0, contacts);
+                    velocity = (velocity - 0.08) * 0.98;
+                } while (y > 0);
+                assertEquals(4, contacts.size());
+                assertTrue(contacts.get(0).kind.isJump());
+                assertTrue(contacts.get(1).kind.isJump());
+                assertTrue(contacts.get(2).kind.isLanding());
+                assertTrue(contacts.get(3).kind.isLanding());
+                assertEquals(contacts.get(2).group, contacts.get(3).group);
+                assertEquals(0, contacts.get(2).y, 0);
+                assertFalse(tracker.rebaselined());
+            }
+        }
+    }
+
+    private static void sample(ContactTracker tracker, EntityProfile profile, double x, double y, boolean grounded,
+        List<org.fentanylsolutions.pastfootsteps.movement.Contact> contacts) {
+        tracker.update(
+            x,
+            y,
+            0,
+            grounded,
+            false,
+            false,
+            false,
+            false,
+            2.4 * profile.strideMultiplier,
+            0.65,
+            profile.runSpeed,
+            true,
+            false,
+            false,
+            contacts::add);
     }
 
     @Test

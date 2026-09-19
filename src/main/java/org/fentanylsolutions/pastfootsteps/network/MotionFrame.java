@@ -34,6 +34,9 @@ public final class MotionFrame {
 
     MotionFrame interpolate(MotionFrame later, double fraction) {
         fraction = Math.max(0, Math.min(1, fraction));
+        // Do not attach a grounded endpoint's flag to a position still above its surface.
+        // A prematurely emitted landing cannot resolve its material and is then lost for this hop.
+        boolean onGround = fraction <= 0 ? grounded : fraction >= 1 ? later.grounded : grounded && later.grounded;
         return new MotionFrame(
             actorId,
             entityId,
@@ -45,7 +48,7 @@ public final class MotionFrame {
             x + (later.x - x) * fraction,
             feetY + (later.feetY - feetY) * fraction,
             z + (later.z - z) * fraction,
-            fraction < 0.5 ? grounded : later.grounded,
+            onGround,
             fraction < 0.5 ? climbing : later.climbing,
             fraction < 0.5 ? swimming : later.swimming,
             fraction < 0.5 ? sprinting : later.sprinting);
