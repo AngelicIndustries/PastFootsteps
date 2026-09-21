@@ -17,6 +17,12 @@ Both pinned source revisions contain the MIT license reproduced in
 LICENSE-MIT.txt. No resources from the project's later PolyForm Shield era
 are included here.
 
+Selected user-facing translations were adapted from the locale files at the
+MIT-licensed revisions fd8dd9278252bbabeabff4557f499ee0e719df58 and
+c009d4a9fd10e9c3fa8bc75238bf26267f17ca1c. Only labels with a truthful local
+equivalent were ported. Formatting suffixes from upstream slider labels were
+removed because Forge supplies the setting values separately.
+
 The original resource namespace remains "presencefootsteps" and the bundled
 sound event names retain their "pf_presence" prefix for compatibility with
 Presence Footsteps sound packs. The imported mono assets use the separate

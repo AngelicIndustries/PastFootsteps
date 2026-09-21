@@ -1,0 +1,5 @@
+pastfootsteps.config.volume.master=Общая громкость
+pastfootsteps.config.volume.ownPlayer=Шаги клиента
+pastfootsteps.config.volume.runningBoost=Усиление при беге
+pastfootsteps.config.volume.wet=Мокрые поверхности
+pastfootsteps.config.volume.otherPlayers=Шаги игроков

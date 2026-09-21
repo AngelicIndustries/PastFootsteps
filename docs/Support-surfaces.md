@@ -1,6 +1,6 @@
 # Entity support surfaces
 
-PastFootsteps can resolve a foot contact on an explicitly mapped, collidable entity surface. The built-in mapping is the Minecraft 1.7 `Boat` entity. A support is accepted only when the bounded foot probe overlaps the entity's actual collision bounding box and reaches its top. Nearby, unloaded, non-collidable, or unknown entities are ignored and normal block or liquid resolution continues.
+PastFootsteps can resolve a foot contact on an explicitly mapped, collidable entity surface. Built-in mappings cover the Minecraft 1.7 `Boat` entity and Et Futurum Requiem boats (`etfuturum.new_boat` and `etfuturum.chest_boat`), all using wood acoustics. EFR wood variants and bamboo rafts share these entity IDs; its passenger-seat entity is not a support surface. A support is accepted only when the bounded foot probe overlaps the entity's actual collision bounding box and reaches its top. Nearby, unloaded, non-collidable, or unknown entities are ignored and normal block or liquid resolution continues.
 
 Support mappings are exact 1.7 entity IDs. Resource packs layer `assets/pastfootsteps/config/supports.json`; the local override is `config/pastfootsteps/profiles/supports.json`.
 

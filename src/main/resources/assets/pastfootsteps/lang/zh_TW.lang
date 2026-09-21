@@ -1,0 +1,11 @@
+pastfootsteps.enabled=音效啟用
+pastfootsteps.disabled=音效停用
+pastfootsteps.config.volume=音量
+pastfootsteps.config.volume.master=全域音量
+pastfootsteps.config.volume.ownPlayer=用戶端玩家
+pastfootsteps.config.volume.runningBoost=跑步增加音量
+pastfootsteps.config.volume.foliage=葉子
+pastfootsteps.config.volume.wet=潮濕的表面
+pastfootsteps.config.volume.otherPlayers=其他玩家
+pastfootsteps.config.volume.passiveMobs=友好生物
+pastfootsteps.config.volume.hostileMobs=敵對生物

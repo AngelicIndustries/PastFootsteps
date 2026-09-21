@@ -1,0 +1,11 @@
+pastfootsteps.enabled=Geräusche aktiviert
+pastfootsteps.disabled=Geräusche deaktiviert
+pastfootsteps.config.volume=Lautstärke
+pastfootsteps.config.volume.master=Gesamtlautstärke
+pastfootsteps.config.volume.ownPlayer=Spieler
+pastfootsteps.config.volume.runningBoost=Geschwindigkeitsanpassung
+pastfootsteps.config.volume.foliage=Grünzeug
+pastfootsteps.config.volume.wet=Nasse Oberflächen
+pastfootsteps.config.volume.otherPlayers=Andere Spieler
+pastfootsteps.config.volume.passiveMobs=Neutrale Kreaturen
+pastfootsteps.config.volume.hostileMobs=Feindliche Kreaturen

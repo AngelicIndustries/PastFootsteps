@@ -6,6 +6,18 @@
       "vanillaSound": "step.wood",
       "volume": 0.15,
       "pitch": 1.0
+    },
+    "etfuturum.new_boat": {
+      "material": "wood",
+      "vanillaSound": "step.wood",
+      "volume": 0.15,
+      "pitch": 1.0
+    },
+    "etfuturum.chest_boat": {
+      "material": "wood",
+      "vanillaSound": "step.wood",
+      "volume": 0.15,
+      "pitch": 1.0
     }
   }
 }

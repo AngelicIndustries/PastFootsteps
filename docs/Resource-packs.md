@@ -461,7 +461,7 @@ The machine-readable schemas are [entities.schema.json](schemas/entities.schema.
 ## Entity support surfaces
 
 `assets/pastfootsteps/config/supports.json` maps exact entity IDs with a verified collidable top surface. The
-bundled `Boat` mapping is deliberately the only default. Local overrides use
+bundled mappings cover vanilla `Boat` and EFR `etfuturum.new_boat` / `etfuturum.chest_boat`, using wood acoustics. Local overrides use
 `config/pastfootsteps/profiles/supports.json`. See [Entity support surfaces](Support-surfaces.md) for the schema,
 collision requirement, and the small API for concrete mod entity adapters.
 

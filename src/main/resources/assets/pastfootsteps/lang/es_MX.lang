@@ -1,0 +1,11 @@
+pastfootsteps.enabled=Sonidos Activados
+pastfootsteps.disabled=Sonidos Desactivados
+pastfootsteps.config.volume=Volumen
+pastfootsteps.config.volume.master=Volumen Global
+pastfootsteps.config.volume.ownPlayer=Jugador Cliente
+pastfootsteps.config.volume.runningBoost=Atenuación de Velocidad
+pastfootsteps.config.volume.foliage=Vegetación
+pastfootsteps.config.volume.wet=Superficies Mojadas
+pastfootsteps.config.volume.otherPlayers=Otros Jugadores
+pastfootsteps.config.volume.passiveMobs=Entidades Pasivas
+pastfootsteps.config.volume.hostileMobs=Entidades Hostiles

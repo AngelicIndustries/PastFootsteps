@@ -1,0 +1,4 @@
+pastfootsteps.config.volume.master=볼륨
+pastfootsteps.config.volume.ownPlayer=클라이언트 플레이어
+pastfootsteps.config.volume.runningBoost=달리고 있을 때 소리 키우기
+pastfootsteps.config.volume.otherPlayers=다른 플레이어

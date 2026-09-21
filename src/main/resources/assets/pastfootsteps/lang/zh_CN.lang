@@ -1,0 +1,5 @@
+pastfootsteps.config.volume.master=音量
+pastfootsteps.config.volume.ownPlayer=客户端玩家
+pastfootsteps.config.volume.runningBoost=跑步增加音量
+pastfootsteps.config.volume.wet=潮湿的表面
+pastfootsteps.config.volume.otherPlayers=其他玩家

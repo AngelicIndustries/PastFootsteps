@@ -1,0 +1,9 @@
+pastfootsteps.config.volume=Volume
+pastfootsteps.config.volume.master=Volume-mestre
+pastfootsteps.config.volume.ownPlayer=Seu jogador
+pastfootsteps.config.volume.runningBoost=Atenuação de velocidade
+pastfootsteps.config.volume.foliage=Vegetação
+pastfootsteps.config.volume.wet=Superfícies molhadas
+pastfootsteps.config.volume.otherPlayers=Outros jogadores
+pastfootsteps.config.volume.passiveMobs=Criaturas passivas
+pastfootsteps.config.volume.hostileMobs=Criaturas hostis

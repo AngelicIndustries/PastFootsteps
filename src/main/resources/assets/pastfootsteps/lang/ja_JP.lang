@@ -1,0 +1,11 @@
+pastfootsteps.enabled=サウンドを有効化しました
+pastfootsteps.disabled=サウンドを無効化しました
+pastfootsteps.config.volume=音量
+pastfootsteps.config.volume.master=主音量
+pastfootsteps.config.volume.ownPlayer=自分
+pastfootsteps.config.volume.runningBoost=速度減衰
+pastfootsteps.config.volume.foliage=植物
+pastfootsteps.config.volume.wet=濡れた地面
+pastfootsteps.config.volume.otherPlayers=他のプレイヤー
+pastfootsteps.config.volume.passiveMobs=友好的生物
+pastfootsteps.config.volume.hostileMobs=敵対的生物

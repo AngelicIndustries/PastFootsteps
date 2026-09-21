@@ -1,0 +1,7 @@
+pastfootsteps.config.volume.master=Volume Global
+pastfootsteps.config.volume.ownPlayer=Joueur Client
+pastfootsteps.config.volume.runningBoost=Atténuation de Vitesse
+pastfootsteps.config.volume.wet=Surfaces Humides
+pastfootsteps.config.volume.otherPlayers=Autres Joueurs
+pastfootsteps.config.volume.passiveMobs=Entités Passives
+pastfootsteps.config.volume.hostileMobs=Entités Hostiles
