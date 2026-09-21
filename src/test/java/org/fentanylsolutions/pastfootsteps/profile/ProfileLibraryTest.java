@@ -28,10 +28,12 @@ import net.minecraft.client.resources.IResource;
 import net.minecraft.client.resources.IResourceManager;
 import net.minecraft.client.resources.data.IMetadataSection;
 import net.minecraft.entity.Entity;
+import net.minecraft.entity.monster.EntityCaveSpider;
 import net.minecraft.entity.monster.EntityGiantZombie;
 import net.minecraft.entity.monster.EntityMagmaCube;
 import net.minecraft.entity.monster.EntitySkeleton;
 import net.minecraft.entity.monster.EntitySlime;
+import net.minecraft.entity.monster.EntitySpider;
 import net.minecraft.entity.passive.EntityAnimal;
 import net.minecraft.entity.passive.EntityCow;
 import net.minecraft.entity.passive.EntityHorse;
@@ -336,8 +338,8 @@ public class ProfileLibraryTest {
 
         for (String id : new String[] { "Zombie", "Skeleton", "PigZombie", "Enderman", "Witch", "Villager",
             "VillagerGolem", "Chicken", "Creeper", "Cow", "MushroomCow", "Pig", "Sheep", "Wolf", "Ozelot",
-            "EntityHorse", "Giant", "LavaSlime", "Slime" }) assertNotNull(id, library.resolve(id));
-        assertNull(library.resolve("Spider"));
+            "EntityHorse", "Giant", "LavaSlime", "Slime", "Spider", "CaveSpider" })
+            assertNotNull(id, library.resolve(id));
         assertNull(library.resolve("Bat"));
 
         Contact[] horseTrot = library.resolve("EntityHorse").gait.contacts(true);
@@ -346,6 +348,99 @@ public class ProfileLibraryTest {
         assertEquals(0.5, horseTrot[1].phase, 0.0);
         assertEquals(1.0, horseTrot[2].phase, 0.0);
         assertEquals(1.0, horseTrot[3].phase, 0.0);
+    }
+
+    @Test
+    public void spidersResolveActualRegistryIdsAndScalePhysicalFeet() throws IOException {
+        Resources resources = new Resources();
+        resources.add("config/gaits.json", resource("/assets/pastfootsteps/config/gaits.json"));
+        resources.add("config/entities.json", resource("/assets/pastfootsteps/config/entities.json"));
+        ProfileLibrary library = load(resources);
+        World world = new TestWorld();
+        EntitySpider spider = new EntitySpider(world);
+        EntityCaveSpider caveSpider = new EntityCaveSpider(world);
+        EntityProfile regular = library.resolve(spider), cave = library.resolve(caveSpider);
+        assertEquals("Spider", regular.id);
+        assertEquals("CaveSpider", cave.id);
+        assertSame(regular.gait, cave.gait);
+        assertEquals(spider.width, regular.referenceWidth, 0.00001);
+        assertEquals(caveSpider.width, cave.referenceWidth, 0.00001);
+        assertTrue(cave.strideMultiplier < regular.strideMultiplier);
+        assertTrue(cave.volume < regular.volume);
+        for (boolean running : new boolean[] { false, true }) {
+            Contact[] feet = regular.gait.contacts(running);
+            assertEquals(8, feet.length);
+            assertEquals(8, new java.util.HashSet<String>(java.util.Arrays.asList(footIds(feet))).size());
+            int left = 0;
+            for (Contact foot : feet) {
+                if (foot.lateral > 0) left++;
+                assertTrue(Math.abs(foot.lateral) <= 0.5);
+                assertTrue(Math.abs(foot.forward) <= 0.5);
+            }
+            assertEquals(4, left);
+        }
+    }
+
+    @Test
+    public void bendsCaveFootPositionsFollowModelScaleRatherThanHitboxScale() throws IOException {
+        Resources resources = new Resources();
+        resources.add("config/gaits.json", resource("/assets/pastfootsteps/config/gaits.json"));
+        resources.add("config/entities.json", resource("/assets/pastfootsteps/config/entities.json"));
+        ProfileLibrary library = load(resources);
+        double regularWidth = library.resolve("Spider").referenceWidth;
+        double caveWidth = library.resolve("CaveSpider").referenceWidth;
+        for (boolean running : new boolean[] { false, true }) {
+            Contact[] regular = library.gait("bends_spider")
+                .contacts(running);
+            Contact[] cave = library.gait("bends_cave_spider")
+                .contacts(running);
+            assertEquals(8, cave.length);
+            for (int i = 0; i < regular.length; i++) {
+                assertEquals(regular[i].footId, cave[i].footId);
+                assertEquals(regular[i].phase, cave[i].phase, 0);
+                assertEquals(regular[i].lateral * regularWidth * 0.7, cave[i].lateral * caveWidth, 0.000001);
+                assertEquals(regular[i].forward * regularWidth * 0.7, cave[i].forward * caveWidth, 0.000001);
+            }
+        }
+    }
+
+    @Test
+    public void spidersUseGroupedContactsWithoutIdleOrAirborneWalking() throws IOException {
+        Resources resources = new Resources();
+        resources.add("config/gaits.json", resource("/assets/pastfootsteps/config/gaits.json"));
+        resources.add("config/entities.json", resource("/assets/pastfootsteps/config/entities.json"));
+        ProfileLibrary library = load(resources);
+        for (String id : new String[] { "Spider", "CaveSpider" }) {
+            EntityProfile profile = library.resolve(id);
+            for (boolean running : new boolean[] { false, true }) {
+                ContactTracker tracker = new ContactTracker(profile.gait, 1);
+                List<org.fentanylsolutions.pastfootsteps.movement.Contact> contacts = new ArrayList<>();
+                double speed = running ? 0.3 : 0.1;
+                for (int i = 0; i <= 120; i++) sample(tracker, profile, i * speed, 0, true, contacts);
+                assertTrue(contacts.size() >= 8);
+                int size = running ? 4 : 2;
+                // Running engages at a cycle boundary after the speed filter settles.
+                int first = contacts.size() - 8;
+                for (int i = first; i < contacts.size(); i += size) {
+                    long group = contacts.get(i).group;
+                    for (int j = 0; j < size; j++) {
+                        assertEquals(size, contacts.get(i + j).groupSize);
+                        assertEquals(group, contacts.get(i + j).group);
+                    }
+                }
+                contacts.clear();
+                for (int i = 0; i < 200; i++) sample(tracker, profile, 120 * speed, 0, true, contacts);
+                assertTrue(contacts.isEmpty());
+                sample(tracker, profile, 120 * speed, 0.42, false, contacts);
+                assertTrue(
+                    contacts.stream()
+                        .allMatch(c -> c.kind.isJump()));
+                contacts.clear();
+                sample(tracker, profile, 120 * speed + 0.1, 0.7, false, contacts);
+                assertTrue(contacts.isEmpty());
+                assertEquals(0, tracker.droppedContacts());
+            }
+        }
     }
 
     @Test

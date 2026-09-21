@@ -19,6 +19,7 @@ import net.minecraft.client.resources.IResourceManagerReloadListener;
 import net.minecraft.entity.Entity;
 import net.minecraft.entity.EntityList;
 import net.minecraft.entity.EntityLivingBase;
+import net.minecraft.entity.monster.EntitySpider;
 import net.minecraft.entity.monster.IMob;
 import net.minecraft.entity.player.EntityPlayer;
 import net.minecraft.util.AxisAlignedBB;
@@ -30,6 +31,7 @@ import net.minecraftforge.event.entity.PlaySoundAtEntityEvent;
 
 import org.fentanylsolutions.pastfootsteps.PastFootsteps;
 import org.fentanylsolutions.pastfootsteps.api.ContactGenerators;
+import org.fentanylsolutions.pastfootsteps.client.compat.EvenMoBendsCompat;
 import org.fentanylsolutions.pastfootsteps.config.Config;
 import org.fentanylsolutions.pastfootsteps.equipment.EquipmentSounds;
 import org.fentanylsolutions.pastfootsteps.footprint.Footprints;
@@ -66,6 +68,7 @@ public final class FootstepController implements IResourceManagerReloadListener 
     private final MaterialLibrary materials = new MaterialLibrary();
     private final SurfaceResolver resolver = new SurfaceResolver(materials);
     private final ProfileLibrary profiles = new ProfileLibrary();
+    private final EvenMoBendsCompat bends = new EvenMoBendsCompat();
     private final SoundArrival arrivals = new SoundArrival();
     private final SoundEngine sound = new SoundEngine(this::emit);
     private final Map<EntityLivingBase, ActorState> actors = new LinkedHashMap<>();
@@ -93,6 +96,8 @@ public final class FootstepController implements IResourceManagerReloadListener 
         String path = name.startsWith("minecraft:") ? name.substring(10) : name;
         ActorState state = INSTANCE.actors.get(entity);
         if (path.startsWith("step.")) return true;
+        // Spider footsteps bypass vanilla block step sounds; keep their vocalizations untouched.
+        if (entity instanceof EntitySpider && path.equals("mob.spider.step")) return true;
         if (path.equals("game.player.swim") || path.equals("game.neutral.swim"))
             return state != null && state.liquidMode != SwimmingSounds.Mode.NONE;
         return state != null && state.surface != null && sameSound(name, state.surface.vanillaSound);
@@ -223,6 +228,7 @@ public final class FootstepController implements IResourceManagerReloadListener 
             state.active = false;
         }
         actors.clear();
+        bends.clear();
         sound.clear();
         arrivals.clear();
         footprints.reset();
@@ -404,7 +410,7 @@ public final class FootstepController implements IResourceManagerReloadListener 
     }
 
     private EntityProfile profile(EntityLivingBase actor) {
-        return profiles.resolve(actor);
+        return bends.adapt(actor, profiles.resolve(actor), profiles.gait(EvenMoBendsCompat.layoutId(actor)));
     }
 
     private void discover() {

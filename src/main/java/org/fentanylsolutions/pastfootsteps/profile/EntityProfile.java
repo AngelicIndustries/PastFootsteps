@@ -110,6 +110,23 @@ public final class EntityProfile {
         this.materialMap = materialMap;
     }
 
+    /** Copies resolved profile tuning while substituting a renderer-specific contact layout. */
+    public EntityProfile withGait(GaitDefinition replacement) {
+        if (gait == replacement) return this;
+        return new EntityProfile(
+            id,
+            parentId,
+            selector,
+            priority,
+            replacement,
+            strideMultiplier,
+            childScale,
+            runSpeed,
+            volume,
+            referenceWidth,
+            materialMap);
+    }
+
     private static void requireRange(double value, double minimum, double maximum, String field) {
         if (Double.isNaN(value) || Double.isInfinite(value) || value < minimum || value > maximum)
             throw new IllegalArgumentException(field + " must be finite and between " + minimum + " and " + maximum);

@@ -329,10 +329,23 @@ pause/reload cancellation, or the separate distance-arrival expiry.
 
 Bundled entity profiles cover `Player`; bipedal `Zombie`, `Skeleton`, `PigZombie`, `Enderman`, `Witch`, `Villager`,
 `VillagerGolem`, `Giant`, `LavaSlime` (magma cube), `Slime` and `Chicken`; four-legged `Creeper`, `Cow`, `MushroomCow`,
-`Pig`, `Sheep`, `Wolf`, and `Ozelot`; and
-`EntityHorse`. The horse gait uses diagonal running contact groups for a trot, with longer strides at high speed. Paw and hoof gaits use different
+`Pig`, `Sheep`, `Wolf`, and `Ozelot`; `EntityHorse`; and eight-legged `Spider` / `CaveSpider`. The horse gait uses diagonal running contact groups for a trot, with longer strides at high speed. Paw and hoof gaits use different
 front/rear geometry, and every supplied profile retains child stride scaling. Other registered entities keep native
-sounds unless explicitly matched, including spiders, bats, squids, ghasts, and flying bosses.
+sounds unless explicitly matched, including bats, squids, ghasts, and flying bosses.
+
+`Spider` and `CaveSpider` use eight distinct foot positions, four paired walking beats and two alternating
+four-foot running groups per cycle. Cave spiders use shorter strides and quieter playback. Ground contacts
+leave small prints on eligible surfaces; wall climbing uses the adjacent wall material without wall decals.
+Only the native spider step sound is replaced; hisses, hurt and death sounds remain. These are PF additions,
+not mappings from the audited MIT baseline. Gait positions approximate contact geometry rather than renderer bones.
+
+When the corresponding Even Mo' Bends renderer is active, vanilla spiders using the `spider` gait automatically
+select `bends_spider` or `bends_cave_spider`. These retain the same phases while widening and lengthening foot
+placement to approximate the jointed model's resting toe positions. The cave layout accounts for its renderer's
+70% model scale rather than its 50% hitbox width. Contacts are not synchronized to render frames or custom
+animation packs. Modded spider subclasses are excluded. Profile volume, stride and material-map settings are
+retained; selecting a custom gait ID bypasses automatic adaptation. Resource packs can tune both layouts in
+the usual gait JSON. Disabling or replacing the renderer restores the ordinary gait at actor discovery.
 
 `Giant` and `LavaSlime` use the biped mapping found in both audited MIT branches. Magma cubes use
 PF's existing physical takeoff/landing contacts; there is no separate hopping clock. Regular `Slime`

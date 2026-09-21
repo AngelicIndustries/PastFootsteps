@@ -46,6 +46,7 @@ dependencies {
     runtimeOnlyNonPublishable("org.fentanylsolutions.fentlib:FentLib:04136bd-snapshot:dev")
     runtimeOnlyNonPublishable("com.github.GTNewHorizons:ModularUI2:2.3.91-1.7.10:dev")
     runtimeOnlyNonPublishable("ganymedes01.etfuturum:Et-Futurum-Requiem:2.6.59-GTNH:dev")
+    runtimeOnlyNonPublishable("net.gobbob.mobends:EvenMoBends:35fe193-snapshot:dev")
 
     // Temporary Carpenter's Blocks runtime for cover/material integration testing.
     runtimeOnlyNonPublishable("com.github.GTNewHorizons:CarpentersBlocks:3.7.3-GTNH:dev")

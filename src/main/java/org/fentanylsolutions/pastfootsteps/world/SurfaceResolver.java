@@ -15,6 +15,7 @@ import net.minecraft.client.resources.IResourceManager;
 import net.minecraft.entity.Entity;
 import net.minecraft.entity.EntityList;
 import net.minecraft.entity.EntityLivingBase;
+import net.minecraft.entity.monster.EntitySpider;
 import net.minecraft.entity.player.EntityPlayer;
 import net.minecraft.util.AxisAlignedBB;
 import net.minecraft.util.MathHelper;
@@ -35,6 +36,7 @@ public final class SurfaceResolver {
     private static final int MAX_SUPPORT_CANDIDATES = 16;
     private static final double OVERLAY_EPSILON = 0.001D;
     private static final double MAX_THIN_OVERLAY_HEIGHT = 0.3D;
+    private static final double WALL_CONTACT_REACH = 0.08D;
 
     private final MaterialLibrary materials;
     private final SupportProfiles supports = new SupportProfiles();
@@ -190,7 +192,12 @@ public final class SurfaceResolver {
             }
         }
 
-        if (validWorldCoordinate(actor.posX) && validWorldCoordinate(actor.posZ) && actor.isOnLadder()) {
+        if (actor instanceof EntitySpider && actor.isOnLadder()) {
+            if (best != null && actor.onGround) return overlaySurface(world, footX, footZ, best, materialMap);
+            Surface wall = resolveSpiderWall(actor, centerX, feetY, centerZ, footX, footZ, materialMap);
+            if (wall != null) return wall;
+            if (best != null) return overlaySurface(world, footX, footZ, best, materialMap);
+        } else if (validWorldCoordinate(actor.posX) && validWorldCoordinate(actor.posZ) && actor.isOnLadder()) {
             int x = floor(actor.posX), y = floor(actor.boundingBox.minY), z = floor(actor.posZ);
             if (world.blockExists(x, y, z)) {
                 Block block = world.getBlock(x, y, z);
@@ -238,6 +245,90 @@ public final class SurfaceResolver {
                 footZ);
         }
         return null;
+    }
+
+    /** Spider ladder state means a solid wall contact, not a ladder block at the actor's feet. */
+    private Surface resolveSpiderWall(EntityLivingBase actor, double centerX, double feetY, double centerZ,
+        double footX, double footZ, String materialMap) {
+        AxisAlignedBB live = actor.boundingBox;
+        if (!validSupportBox(live)) return null;
+        double offsetX = centerX - actor.posX, offsetY = feetY - live.minY, offsetZ = centerZ - actor.posZ;
+        AxisAlignedBB body = AxisAlignedBB.getBoundingBox(
+            live.minX + offsetX,
+            live.minY + offsetY,
+            live.minZ + offsetZ,
+            live.maxX + offsetX,
+            live.maxY + offsetY,
+            live.maxZ + offsetZ);
+        double top = Math.min(body.maxY, feetY + 1.0D);
+        if (top <= feetY) return null;
+        AxisAlignedBB probe = AxisAlignedBB.getBoundingBox(
+            body.minX - WALL_CONTACT_REACH,
+            feetY,
+            body.minZ - WALL_CONTACT_REACH,
+            body.maxX + WALL_CONTACT_REACH,
+            top,
+            body.maxZ + WALL_CONTACT_REACH);
+        int[] xs = sampleCells(probe.minX, probe.maxX, 3);
+        int[] zs = sampleCells(probe.minZ, probe.maxZ, 3);
+        int[] ys = sampleCells(probe.minY, probe.maxY, 2);
+        Surface best = null;
+        double bestScore = Double.MAX_VALUE;
+        World world = actor.worldObj;
+        for (int x : xs) for (int z : zs) for (int y : ys) {
+            if (!world.blockExists(x, y, z)) continue;
+            Block block = world.getBlock(x, y, z);
+            collisionBoxes.clear();
+            float oldMinX = (float) block.getBlockBoundsMinX(), oldMinY = (float) block.getBlockBoundsMinY(),
+                oldMinZ = (float) block.getBlockBoundsMinZ(), oldMaxX = (float) block.getBlockBoundsMaxX(),
+                oldMaxY = (float) block.getBlockBoundsMaxY(), oldMaxZ = (float) block.getBlockBoundsMaxZ();
+            try {
+                block.addCollisionBoxesToList(world, x, y, z, probe, collisionBoxes, actor);
+            } catch (RuntimeException ignored) {
+                continue;
+            } finally {
+                block.setBlockBounds(oldMinX, oldMinY, oldMinZ, oldMaxX, oldMaxY, oldMaxZ);
+            }
+            for (AxisAlignedBB box : collisionBoxes) {
+                if (!validSupportBox(box) || box.maxY <= feetY + OVERLAY_EPSILON || box.minY > top) continue;
+                boolean beside = box.maxX <= body.minX + WALL_CONTACT_REACH
+                    || box.minX >= body.maxX - WALL_CONTACT_REACH
+                    || box.maxZ <= body.minZ + WALL_CONTACT_REACH
+                    || box.minZ >= body.maxZ - WALL_CONTACT_REACH;
+                if (!beside) continue;
+                double contactX = clamp(footX, box.minX, box.maxX);
+                double contactY = clamp(feetY, box.minY, box.maxY);
+                double contactZ = clamp(footZ, box.minZ, box.maxZ);
+                double dx = contactX - footX, dz = contactZ - footZ;
+                double score = dx * dx + dz * dz;
+                if (score >= bestScore) continue;
+                int meta = world.getBlockMetadata(x, y, z);
+                BlockMaterial appearance = BlockAppearanceProviders.resolve(world, x, y, z, block, meta);
+                MaterialLibrary.Association association = materials
+                    .resolve(appearance.block, appearance.metadata, "", materialMap);
+                Block.SoundType step = association.sound;
+                best = new Surface(
+                    association.name,
+                    null,
+                    step == null ? null : step.getStepResourcePath(),
+                    step == null ? 0.0F : step.getVolume() * 0.15F,
+                    step == null ? 1.0F : step.getPitch(),
+                    x,
+                    y,
+                    z,
+                    false,
+                    false,
+                    contactX,
+                    contactY,
+                    contactZ,
+                    box.minX,
+                    box.maxX,
+                    box.minZ,
+                    box.maxZ);
+                bestScore = score;
+            }
+        }
+        return best;
     }
 
     /** Mapped thin coverings select audio and decal geometry without changing physical grounding. */

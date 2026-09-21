@@ -67,6 +67,72 @@
         { "footId": "front_left_hoof", "phase": 1.00, "lateral": 0.32, "forward": 0.46 },
         { "footId": "hind_right_hoof", "phase": 1.00, "lateral": -0.32, "forward": -0.46 }
       ]
+    },
+    "spider": {
+      "walk": [
+        { "footId": "front_left", "phase": 0.25, "lateral": 0.4, "forward": 0.42 },
+        { "footId": "rear_middle_left", "phase": 0.25, "lateral": 0.48, "forward": -0.14 },
+        { "footId": "front_middle_right", "phase": 0.5, "lateral": -0.48, "forward": 0.14 },
+        { "footId": "rear_right", "phase": 0.5, "lateral": -0.4, "forward": -0.42 },
+        { "footId": "front_right", "phase": 0.75, "lateral": -0.4, "forward": 0.42 },
+        { "footId": "rear_middle_right", "phase": 0.75, "lateral": -0.48, "forward": -0.14 },
+        { "footId": "front_middle_left", "phase": 1.0, "lateral": 0.48, "forward": 0.14 },
+        { "footId": "rear_left", "phase": 1.0, "lateral": 0.4, "forward": -0.42 }
+      ],
+      "run": [
+        { "footId": "front_left", "phase": 0.5, "lateral": 0.4, "forward": 0.42 },
+        { "footId": "rear_middle_left", "phase": 0.5, "lateral": 0.48, "forward": -0.14 },
+        { "footId": "front_middle_right", "phase": 0.5, "lateral": -0.48, "forward": 0.14 },
+        { "footId": "rear_right", "phase": 0.5, "lateral": -0.4, "forward": -0.42 },
+        { "footId": "front_right", "phase": 1.0, "lateral": -0.4, "forward": 0.42 },
+        { "footId": "rear_middle_right", "phase": 1.0, "lateral": -0.48, "forward": -0.14 },
+        { "footId": "front_middle_left", "phase": 1.0, "lateral": 0.48, "forward": 0.14 },
+        { "footId": "rear_left", "phase": 1.0, "lateral": 0.4, "forward": -0.42 }
+      ]
+    },
+    "bends_spider": {
+      "walk": [
+        { "footId": "front_left", "phase": 0.25, "lateral": 0.44, "forward": 0.75 },
+        { "footId": "rear_middle_left", "phase": 0.25, "lateral": 0.76, "forward": -0.53 },
+        { "footId": "front_middle_right", "phase": 0.5, "lateral": -0.76, "forward": 0.48 },
+        { "footId": "rear_right", "phase": 0.5, "lateral": -0.44, "forward": -0.8 },
+        { "footId": "front_right", "phase": 0.75, "lateral": -0.44, "forward": 0.75 },
+        { "footId": "rear_middle_right", "phase": 0.75, "lateral": -0.76, "forward": -0.53 },
+        { "footId": "front_middle_left", "phase": 1.0, "lateral": 0.76, "forward": 0.48 },
+        { "footId": "rear_left", "phase": 1.0, "lateral": 0.44, "forward": -0.8 }
+      ],
+      "run": [
+        { "footId": "front_left", "phase": 0.5, "lateral": 0.44, "forward": 0.75 },
+        { "footId": "rear_middle_left", "phase": 0.5, "lateral": 0.76, "forward": -0.53 },
+        { "footId": "front_middle_right", "phase": 0.5, "lateral": -0.76, "forward": 0.48 },
+        { "footId": "rear_right", "phase": 0.5, "lateral": -0.44, "forward": -0.8 },
+        { "footId": "front_right", "phase": 1.0, "lateral": -0.44, "forward": 0.75 },
+        { "footId": "rear_middle_right", "phase": 1.0, "lateral": -0.76, "forward": -0.53 },
+        { "footId": "front_middle_left", "phase": 1.0, "lateral": 0.76, "forward": 0.48 },
+        { "footId": "rear_left", "phase": 1.0, "lateral": 0.44, "forward": -0.8 }
+      ]
+    },
+    "bends_cave_spider": {
+      "walk": [
+        { "footId": "front_left", "phase": 0.25, "lateral": 0.616, "forward": 1.05 },
+        { "footId": "rear_middle_left", "phase": 0.25, "lateral": 1.064, "forward": -0.742 },
+        { "footId": "front_middle_right", "phase": 0.5, "lateral": -1.064, "forward": 0.672 },
+        { "footId": "rear_right", "phase": 0.5, "lateral": -0.616, "forward": -1.12 },
+        { "footId": "front_right", "phase": 0.75, "lateral": -0.616, "forward": 1.05 },
+        { "footId": "rear_middle_right", "phase": 0.75, "lateral": -1.064, "forward": -0.742 },
+        { "footId": "front_middle_left", "phase": 1.0, "lateral": 1.064, "forward": 0.672 },
+        { "footId": "rear_left", "phase": 1.0, "lateral": 0.616, "forward": -1.12 }
+      ],
+      "run": [
+        { "footId": "front_left", "phase": 0.5, "lateral": 0.616, "forward": 1.05 },
+        { "footId": "rear_middle_left", "phase": 0.5, "lateral": 1.064, "forward": -0.742 },
+        { "footId": "front_middle_right", "phase": 0.5, "lateral": -1.064, "forward": 0.672 },
+        { "footId": "rear_right", "phase": 0.5, "lateral": -0.616, "forward": -1.12 },
+        { "footId": "front_right", "phase": 1.0, "lateral": -0.616, "forward": 1.05 },
+        { "footId": "rear_middle_right", "phase": 1.0, "lateral": -1.064, "forward": -0.742 },
+        { "footId": "front_middle_left", "phase": 1.0, "lateral": 1.064, "forward": 0.672 },
+        { "footId": "rear_left", "phase": 1.0, "lateral": 0.616, "forward": -1.12 }
+      ]
     }
   }
 }
