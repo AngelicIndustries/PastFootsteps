@@ -28,6 +28,15 @@ Walking features formerly in AET now belong here; see the [migration guide](docs
 VERSION=myversion ./gradlew build
 ```
 
+To test alongside a local An Extra Touch development build, explicitly supply its jar:
+
+```sh
+VERSION=0.0.1 ./gradlew runClient -PanExtraTouchJar=../AnExtraTouch/build/libs/anextratouch-0.0.13-dev.jar
+```
+
+Use a development (`-dev.jar`) artifact. This is an optional local test dependency; it is not bundled or
+required by the published mod. See [release preparation](RELEASE_CHECKLIST.md) for the current cleanup status.
+
 ## Credits
 
 * Hurricaaane, Sollace, and the [Presence Footsteps contributors](https://github.com/Sollace/Presence-Footsteps)

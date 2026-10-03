@@ -51,8 +51,14 @@ dependencies {
     // Temporary Carpenter's Blocks runtime for cover/material integration testing.
     runtimeOnlyNonPublishable("com.github.GTNewHorizons:CarpentersBlocks:3.7.3-GTNH:dev")
 
-    // Local AET build for testing the walking-feature migration together.
-    runtimeOnlyNonPublishable(files("../AnExtraTouch/build/libs/anextratouch-0.0.13-dev.jar"))
+    // Optional local integration test; a standalone checkout needs no sibling build.
+    if (project.hasProperty("anExtraTouchJar")) {
+        def integrationJar = file(project.property("anExtraTouchJar"))
+        if (!integrationJar.isFile()) {
+            throw new GradleException("An Extra Touch development jar not found: ${integrationJar}")
+        }
+        runtimeOnlyNonPublishable(files(integrationJar))
+    }
 
     // Compile + runtime
     devOnlyNonPublishable(rfg.deobf("maven.modrinth:dynamic-surroundings-unofficial-1.7.10:1.0.8.0"))
