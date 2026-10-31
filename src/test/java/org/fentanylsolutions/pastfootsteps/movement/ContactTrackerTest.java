@@ -161,7 +161,7 @@ public class ContactTrackerTest {
         Fixture ordinarySwim = new Fixture(BIPED), tunedSwim = new Fixture(tuned);
         ordinarySwim.ground = tunedSwim.ground = false;
         ordinarySwim.swimming = tunedSwim.swimming = true;
-        for (int i = 0; i <= 24; i++) {
+        for (int i = 0; i <= 48; i++) {
             ordinarySwim.at(i * 0.3, i * 0.1, 0);
             tunedSwim.at(i * 0.3, i * 0.1, 0);
         }
@@ -411,7 +411,8 @@ public class ContactTrackerTest {
         f.at(0, 0, 0);
         for (int i = 1; i <= 24; i++) f.at(0, i * 0.1, 0);
         for (int i = 1; i <= 24; i++) f.at(0, 2.4 - i * 0.1, 0);
-        assertEquals(4, f.events.size());
+        // One stroke per 1 / 0.6 blocks, like vanilla: 4.8 blocks make two.
+        assertEquals(2, f.events.size());
         for (Contact contact : f.events) {
             assertEquals(ContactKind.SWIM, contact.kind);
             assertEquals(0.1, contact.speed, 0.001);
@@ -428,7 +429,8 @@ public class ContactTrackerTest {
         f.ground = false;
         f.swimming = true;
         for (int i = 1; i <= 24; i++) f.at(i * 0.1, -0.1, 0);
-        assertEquals(2, f.events.size());
+        // About 2.4 blocks swum: one stroke at vanilla's spacing.
+        assertEquals(1, f.events.size());
         for (Contact contact : f.events) assertEquals(ContactKind.SWIM, contact.kind);
         f.events.clear();
         f.swimming = false;
@@ -450,9 +452,9 @@ public class ContactTrackerTest {
         f.at(0, 100, 0);
         assertTrue(f.tracker.rebaselined());
         assertTrue(f.events.isEmpty());
-        for (int i = 1; i <= 11; i++) f.at(0, 100 + i * 0.1, 0);
+        for (int i = 1; i <= 16; i++) f.at(0, 100 + i * 0.1, 0);
         assertTrue(f.events.isEmpty());
-        f.at(0, 101.2, 0);
+        f.at(0, 101.7, 0);
         assertEquals(1, f.events.size());
         assertEquals(ContactKind.SWIM, f.events.get(0).kind);
         assertEquals(0.1, f.events.get(0).speed, 0.001);

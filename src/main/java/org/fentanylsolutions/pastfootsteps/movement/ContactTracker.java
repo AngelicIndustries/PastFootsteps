@@ -10,6 +10,8 @@ public final class ContactTracker implements ContactGenerator {
 
     public static final int MAX_CONTACTS_PER_TICK = 16;
     private static final double EPSILON = 1.0E-8;
+    /** Vanilla's distance between swim strokes: an entity plays one for every 1 / 0.6 blocks it moves in water. */
+    private static final double SWIM_STROKE = 1 / 0.6;
 
     public interface Listener {
 
@@ -141,7 +143,11 @@ public final class ContactTracker implements ContactGenerator {
                 nextStand = nextStandInterval();
                 kind = onLadder ? ContactKind.CLIMB
                     : inLiquid ? ContactKind.SWIM : running ? ContactKind.RUN : ContactKind.WALK;
-                double interval = Math.max(0.15, onLadder ? ladderStride * 2 : cycleDistance);
+                // Strokes keep vanilla's spacing; the walking stride made them three times as frequent.
+                double interval = Math.max(
+                    0.15,
+                    onLadder ? ladderStride * 2
+                        : inLiquid ? SWIM_STROKE * (cycleRunning ? run : walk).length : cycleDistance);
                 if (running && !onLadder && !inLiquid) interval *= 1.15;
                 // Smoothly lengthen fast ground strides without resetting contact phase or foot order.
                 if (fastStride != null && !onLadder && !inLiquid) interval *= fastStride.scale(speed);
