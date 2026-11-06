@@ -225,6 +225,7 @@
 	"minecraft:waterlily": "waterfine",
 	"minecraft:waterlily.carpet": "waterfine",
 	"minecraft:nether_brick": "brickstone",
+	"minecraft:nether_brick_fence": "brickstone",
 	"minecraft:nether_brick_fence.bigger": "brickstone",
 	"minecraft:nether_brick_stairs": "brickstone",
 	"minecraft:nether_wart": "NOT_EMITTER",
