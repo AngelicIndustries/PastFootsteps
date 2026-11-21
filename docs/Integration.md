@@ -9,7 +9,7 @@ AutoCloseable registration = ContactEvents.listen(contact -> {
 });
 ```
 
-`org.fentanylsolutions.pastfootsteps.api.ContactEvents` calls observers on the client simulation thread, once per resolved foot contact. Closing the returned handle unregisters it. A throwing observer is removed and logged. No event is allocated between contacts.
+`industries.angelic.pastfootsteps.api.ContactEvents` calls observers on the client simulation thread, once per resolved foot contact. Closing the returned handle unregisters it. A throwing observer is removed and logged. No event is allocated between contacts.
 
 Observers must not mutate the actor/world or retain actor references indefinitely. The event describes cosmetic observation, not server authority or proof that a gameplay action occurred. Print and sound settings do not suppress the contact stream; the master toggle and actor eligibility do. Foot IDs and simultaneous group IDs are stable within a tracked actor lifetime. Sequence/group counters can restart after a reset, so never use an entity ID alone as a persistent key. Actors are removed on death, mount/flight, range/budget changes and world changes.
 
@@ -26,7 +26,7 @@ Use `/pf status`, `/pf reload`, `/pf report` and the contact HUD/markers during 
 
 ## Block materials
 
-`org.fentanylsolutions.pastfootsteps.api.DerivedBlock` describes a static base material. Implement
+`industries.angelic.pastfootsteps.api.DerivedBlock` describes a static base material. Implement
 `getBaseMaterial(int metadata)` on a block and return `new BlockMaterial(baseBlock, baseMetadata)`, or `null`
 when no base is known. Metadata must be in `0..15`. PF supplies this for vanilla `BlockStairs` and its subclasses.
 Explicit wrapper mappings are authoritative; missing or `UNASSIGNED` mappings can inherit from the base.

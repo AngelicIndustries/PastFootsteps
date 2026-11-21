@@ -1,6 +1,6 @@
 {
   "$schema": "http://json-schema.org/draft-07/schema#",
-  "$id": "https://github.com/JackOfNoneTrades/PastFootsteps/blob/main/docs/schemas/entities.schema.json",
+  "$id": "https://github.com/AngelicIndustries/PastFootsteps/blob/master/docs/schemas/entities.schema.json",
   "title": "Past Footsteps entity profiles",
   "type": "object",
   "additionalProperties": false,

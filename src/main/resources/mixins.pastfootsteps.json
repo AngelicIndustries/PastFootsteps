@@ -1,7 +1,7 @@
 {
   "required": true,
   "minVersion": "0.8.7-GTNH",
-  "package": "org.fentanylsolutions.pastfootsteps.mixins.mid",
+  "package": "industries.angelic.pastfootsteps.mixins.mid",
   "refmap": "mixins.pastfootsteps.refmap.json",
   "target": "@env(DEFAULT)",
   "compatibilityLevel": "JAVA_8",

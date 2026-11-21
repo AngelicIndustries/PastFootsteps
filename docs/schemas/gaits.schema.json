@@ -1,6 +1,6 @@
 {
   "$schema": "http://json-schema.org/draft-07/schema#",
-  "$id": "https://github.com/JackOfNoneTrades/PastFootsteps/blob/main/docs/schemas/gaits.schema.json",
+  "$id": "https://github.com/AngelicIndustries/PastFootsteps/blob/master/docs/schemas/gaits.schema.json",
   "title": "Past Footsteps gait profiles",
   "type": "object",
   "additionalProperties": false,
