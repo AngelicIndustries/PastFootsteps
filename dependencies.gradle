@@ -35,21 +35,23 @@
  */
 dependencies {
     // Pure runtime
-    runtimeOnlyNonPublishable("com.github.GTNewHorizons:Hodgepodge:2.7.210:dev")
-    runtimeOnlyNonPublishable("com.github.GTNewHorizons:NotEnoughItems:2.8.144-GTNH:dev")
+    runtimeOnlyNonPublishable("com.github.GTNewHorizons:Hodgepodge:2.8.5:dev")
+    runtimeOnlyNonPublishable("com.github.GTNewHorizons:NotEnoughItems:2.9.12-GTNH:dev")
     runtimeOnlyNonPublishable(rfg.deobf("curse.maven:catalogue-vintage-1465746:8384975")) // 1.0.8-1.7.10
-    runtimeOnlyNonPublishable("com.github.GTNewHorizons:Angelica:2.2.17:dev")
-    runtimeOnlyNonPublishable("dev.dediamondpro.resourcify:VintageResourcify:1.0.5:dev")
+    runtimeOnlyNonPublishable("com.github.GTNewHorizons:Angelica:2.2.46:dev")
+    runtimeOnlyNonPublishable("industries.angelic.vintageresourcify:VintageResourcify:1.0.6:dev") {
+        exclude group: "industries.angelic.angellib", module: "AngelLib"
+    }
     runtimeOnlyNonPublishable("industries.angelic.vrap:vrap:1.0.2:dev")
     runtimeOnlyNonPublishable("com.falsepattern:forgelin-mc1.7.10:2.4.3-2.4.10")
     runtimeOnlyNonPublishable("jss2a98aj:BugTorch:1.3.1:bugtorch-1.3.1-dev")
-    runtimeOnlyNonPublishable("industries.angelic.angellib:AngelLib:1.0.0:dev")
-    runtimeOnlyNonPublishable("com.github.GTNewHorizons:ModularUI2:2.3.91-1.7.10:dev")
-    runtimeOnlyNonPublishable("ganymedes01.etfuturum:Et-Futurum-Requiem:2.6.59-GTNH:dev")
-    runtimeOnlyNonPublishable("net.gobbob.mobends:EvenMoBends:35fe193-snapshot:dev")
+    runtimeOnlyNonPublishable("industries.angelic.angellib:AngelLib:1.0.2:dev")
+    runtimeOnlyNonPublishable("com.github.GTNewHorizons:ModularUI2:2.4.1-1.7.10:dev")
+    runtimeOnlyNonPublishable("ganymedes01.etfuturum:Et-Futurum-Requiem:2.7.3-GTNH:dev")
+    runtimeOnlyNonPublishable("net.gobbob.mobends:EvenMoBends:15b1126-snapshot:dev")
 
     // Temporary Carpenter's Blocks runtime for cover/material integration testing.
-    runtimeOnlyNonPublishable("com.github.GTNewHorizons:CarpentersBlocks:3.7.3-GTNH:dev")
+    runtimeOnlyNonPublishable("com.github.GTNewHorizons:CarpentersBlocks:3.8.0-GTNH:dev")
 
     // Optional local integration test; a standalone checkout needs no sibling build.
     if (project.hasProperty("anExtraTouchJar")) {
@@ -61,7 +63,7 @@ dependencies {
     }
 
     // Compile + runtime
-    devOnlyNonPublishable(rfg.deobf("maven.modrinth:dynamic-surroundings-unofficial-1.7.10:1.0.8.0"))
+    devOnlyNonPublishable(rfg.deobf("maven.modrinth:dynamic-surroundings-unofficial-1.7.10:1.0.9.0"))
 
     // Hard deps
 
