@@ -2,6 +2,8 @@
 
 A Forge 1.7.10 port of [Presence Footsteps](https://github.com/Sollace/Presence-Footsteps): material footsteps, foliage rustling, equipment accents and footprints for players and mobs.
 
+![logo](images/logo_small.png)
+
 [![hub](images/badges/github.png)](https://github.com/AngelicIndustries/PastFootsteps/releases)
 ![forge](images/badges/forge.png)
 [![cord](images/badges/cord.png)](https://discord.gg/xAWCqGrguG)

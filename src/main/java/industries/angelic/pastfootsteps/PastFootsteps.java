@@ -19,7 +19,7 @@ import industries.angelic.pastfootsteps.config.Config;
     guiFactory = "industries.angelic.pastfootsteps.config.ConfigGuiFactory",
     customProperties = { @Mod.CustomProperty(k = "license", v = "MIT"),
         @Mod.CustomProperty(k = "issueTrackerUrl", v = "https://github.com/AngelicIndustries/PastFootsteps/issues"),
-        @Mod.CustomProperty(k = "iconFile", v = "assets/pastfootsteps/icon.png"),
+        @Mod.CustomProperty(k = "iconFile", v = "assets/pastfootsteps/logo.png"),
         @Mod.CustomProperty(k = "backgroundFile", v = "assets/pastfootsteps/background.png") })
 public class PastFootsteps {
 
