@@ -5,6 +5,7 @@ A Forge 1.7.10 port of [Presence Footsteps](https://github.com/Sollace/Presence-
 ![logo](images/logo_small.png)
 
 [![hub](images/badges/github.png)](https://github.com/AngelicIndustries/PastFootsteps/releases)
+[![67](images/badges/67.png)](https://67minecraft.com/mod/c09YLjZ1)
 ![forge](images/badges/forge.png)
 [![cord](images/badges/cord.png)](https://discord.gg/xAWCqGrguG)
 
@@ -12,7 +13,6 @@ A Forge 1.7.10 port of [Presence Footsteps](https://github.com/Sollace/Presence-
 [![curse](images/badges/curse.png)](https://www.curseforge.com/minecraft/mc-mods/pastfootsteps)
 [![modrinth](images/badges/modrinth.png)](https://modrinth.com/mod/pastfootsteps)
 [![mcmodcn](images/badges/mcmodcn.png)](https://www.mcmod.cn/class/PROJECT_ID.html)
-[![67](images/badges/67.png)](https://67minecraft.com/mod/c09YLjZ1)
 [![maven](images/badges/maven.png)](https://maven.angelic.industries/#/releases/industries/angelic/pastfootsteps/PastFootsteps)
 -->
 
