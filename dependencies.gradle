@@ -53,7 +53,8 @@ dependencies {
     // Temporary Carpenter's Blocks runtime for cover/material integration testing.
     runtimeOnlyNonPublishable("com.github.GTNewHorizons:CarpentersBlocks:3.8.0-GTNH:dev")
 
-    // Optional local integration test; a standalone checkout needs no sibling build.
+    // Optional local integration test with a sibling An Extra Touch dev jar, for example
+    // -PanExtraTouchJar=../AnExtraTouch/build/libs/anextratouch-<version>-dev.jar. A standalone checkout needs none.
     if (project.hasProperty("anExtraTouchJar")) {
         def integrationJar = file(project.property("anExtraTouchJar"))
         if (!integrationJar.isFile()) {
