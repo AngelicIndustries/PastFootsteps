@@ -60,6 +60,22 @@ public class AcousticEngineTest {
     }
 
     @Test
+    public void walkingOverrideLeavesFallbackEventsAndContextIntact() {
+        load("{\"type\":\"events\",\"walk\":\"original\",\"run\":\"running\"}");
+        engine.walkingOverrides(Collections.singletonMap("test", "minecraft:step.gravel"));
+        engine.play("test", "walk", new AcousticContext(0, 0, 0, 0.3f, 0.8f));
+        engine.play("test", "run", context);
+        engine.play("test", "land", context);
+        engine.play("test", "up", context);
+        assertEquals(Arrays.asList("minecraft:step.gravel", "running", "running", "original"), names);
+        assertEquals(0.3f, volumes.get(0), 0.0001f);
+        assertEquals(0.8f, pitches.get(0), 0.0001f);
+        engine.walkingOverrides(Collections.emptyMap());
+        engine.play("test", "walk", context);
+        assertEquals("original", names.get(4));
+    }
+
+    @Test
     public void allBundledDefinitionsParseAndPlay() throws Exception {
         String root = "/assets/presencefootsteps/config/acoustics/";
         try (InputStreamReader reader = new InputStreamReader(

@@ -49,6 +49,7 @@ public final class AcousticEngine {
         }
     }
 
+    private final Map<String, Acoustic> walkingOverrides = new HashMap<>();
     private final Map<String, Definition> acoustics = new HashMap<>();
     private final TimedSoundQueue pending;
     private final Random random = new Random();
@@ -74,7 +75,8 @@ public final class AcousticEngine {
 
     public boolean has(String name, String event) {
         Definition definition = acoustics.get(name);
-        return definition != null && definition.acoustic.supports(event);
+        return definition != null
+            && (("walk".equals(event) && walkingOverrides.containsKey(name)) || definition.acoustic.supports(event));
     }
 
     public boolean ready() {
@@ -92,6 +94,7 @@ public final class AcousticEngine {
      */
     public void reload(IResourceManager manager, Iterable<String> ids, File directory) {
         acoustics.clear();
+        walkingOverrides.clear();
         clear();
         for (String id : sortedIds(ids)) {
             List<IResource> resources;
@@ -153,10 +156,20 @@ public final class AcousticEngine {
         pending.tick();
     }
 
+    /** Exact walk-event overrides do not change the fallback graph for jumps, running or landings. */
+    public void walkingOverrides(Map<String, String> sounds) {
+        walkingOverrides.clear();
+        sounds.forEach(
+            (material, sound) -> walkingOverrides.put(material, basic(sound, new Range(1, 1), new Range(1, 1))));
+    }
+
     public void play(String name, String event, AcousticContext context) {
         Definition definition = acoustics.get(name);
-        if (definition != null && context.volume > 0 && context.isValid())
-            definition.acoustic.play(context, event == null ? "walk" : event);
+        if (definition != null && context.volume > 0 && context.isValid()) {
+            String selectedEvent = event == null ? "walk" : event;
+            Acoustic override = "walk".equals(selectedEvent) ? walkingOverrides.get(name) : null;
+            (override == null ? definition.acoustic : override).play(context, selectedEvent);
+        }
     }
 
     private Acoustic parse(JsonElement value, int depth) {

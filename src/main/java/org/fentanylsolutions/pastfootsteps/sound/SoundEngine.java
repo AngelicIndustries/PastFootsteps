@@ -34,6 +34,10 @@ public final class SoundEngine {
         return delegate.definitions();
     }
 
+    public void walkingOverrides(Map<String, String> sounds) {
+        delegate.walkingOverrides(sounds);
+    }
+
     public boolean ready() {
         return delegate.ready();
     }

@@ -10,18 +10,23 @@ import java.util.LinkedHashMap;
 import java.util.List;
 import java.util.Map;
 import java.util.Set;
+import java.util.TreeMap;
 
+import net.minecraft.block.Block;
 import net.minecraft.block.material.Material;
 import net.minecraft.client.Minecraft;
 import net.minecraft.client.resources.IResource;
 import net.minecraft.client.resources.IResourceManager;
 import net.minecraft.client.resources.IResourceManagerReloadListener;
+import net.minecraft.creativetab.CreativeTabs;
 import net.minecraft.entity.Entity;
 import net.minecraft.entity.EntityList;
 import net.minecraft.entity.EntityLivingBase;
 import net.minecraft.entity.monster.EntitySpider;
 import net.minecraft.entity.monster.IMob;
 import net.minecraft.entity.player.EntityPlayer;
+import net.minecraft.item.Item;
+import net.minecraft.item.ItemStack;
 import net.minecraft.util.AxisAlignedBB;
 import net.minecraft.util.ResourceLocation;
 import net.minecraft.world.World;
@@ -32,6 +37,7 @@ import net.minecraftforge.event.entity.PlaySoundAtEntityEvent;
 import org.fentanylsolutions.pastfootsteps.PastFootsteps;
 import org.fentanylsolutions.pastfootsteps.api.ActorSilencers;
 import org.fentanylsolutions.pastfootsteps.api.ContactGenerators;
+import org.fentanylsolutions.pastfootsteps.api.WalkingSounds;
 import org.fentanylsolutions.pastfootsteps.client.compat.EvenMoBendsCompat;
 import org.fentanylsolutions.pastfootsteps.config.Config;
 import org.fentanylsolutions.pastfootsteps.equipment.EquipmentSounds;
@@ -220,6 +226,7 @@ public final class FootstepController implements IResourceManagerReloadListener 
             PastFootsteps.LOG.error("Unable to load acoustic index", e);
         }
         sound.reload(manager, ids, Config.directory);
+        WalkingSounds.reload(manager, sound);
         PastFootsteps.LOG.info("Loaded {} acoustic definitions for PastFootsteps", ids.size());
     }
 
@@ -238,6 +245,34 @@ public final class FootstepController implements IResourceManagerReloadListener 
         contactDebug.clear();
         discoveryTicks = 0;
         world = null;
+    }
+
+    /** Detached catalog of the shared, currently resolved walking materials and their block items. */
+    public Map<String, List<ItemStack>> walkingMaterials() {
+        Map<String, List<ItemStack>> result = new TreeMap<>();
+        for (Object value : Block.blockRegistry) {
+            Block block = (Block) value;
+            Item item = Item.getItemFromBlock(block);
+            if (item == null) continue;
+            List<ItemStack> variants = new ArrayList<>();
+            try {
+                block.getSubBlocks(item, CreativeTabs.tabAllSearch, variants);
+                if (variants.isEmpty()) variants.add(new ItemStack(item));
+                for (ItemStack stack : variants) {
+                    if (stack == null || stack.getItem() != item) continue;
+                    String association = materials.lookup(block, stack.getItemDamage(), "");
+                    if (association == null) continue;
+                    for (String name : association.split(",")) {
+                        String material = name.trim();
+                        if (sound.canPlay(material, "walk")) result.computeIfAbsent(material, key -> new ArrayList<>())
+                            .add(stack.copy());
+                    }
+                }
+            } catch (RuntimeException | LinkageError error) {
+                PastFootsteps.LOG.debug("Cannot catalog walking material for {}", block, error);
+            }
+        }
+        return result;
     }
 
     public Set<String> materialMapNames() {

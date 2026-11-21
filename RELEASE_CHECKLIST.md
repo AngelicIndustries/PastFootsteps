@@ -16,13 +16,17 @@ pending the WawelAuth player-model rework. The maintainer will push and publish.
 
 ## Work in progress
 
-* Uncommitted walking-sound override API and resource loader, paired with AET's experimental material browser
+The user rejected the current editor slice on 2026-10-03. It is being redesigned around explicit block/material
+scope, editable sound recipes and original/draft comparison. The existing code below remains a prototype.
+
+* The walking-sound override API and resource loader are committed as an experimental prototype, paired with Sound Manager's experimental material browser
   and sound picker. The format replaces only exact walking events with installed sound events. Running,
   jumping, landing and other recipes retain their existing behavior.
 * Layer precedence, malformed-input handling, missing-sound fallback and acoustic playback have tests.
   End-to-end editor acceptance still needs to cover audition, save/apply, revert, reopening, pack priority,
   resource reload and missing/older PF versions. This is not yet a general sound-pack authoring system.
-* The editor code and its draft documentation remain uncommitted during review.
+* The editor moved from AET to the standalone `SoundManager/` project on 2026-10-19. Its code and draft
+  documentation remain uncommitted during review; PF's API and resource format are unchanged.
 
 ## Validation and cleanup
 
