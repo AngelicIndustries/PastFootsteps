@@ -30,6 +30,7 @@ import net.minecraftforge.common.MinecraftForge;
 import net.minecraftforge.event.entity.PlaySoundAtEntityEvent;
 
 import org.fentanylsolutions.pastfootsteps.PastFootsteps;
+import org.fentanylsolutions.pastfootsteps.api.ActorSilencers;
 import org.fentanylsolutions.pastfootsteps.api.ContactGenerators;
 import org.fentanylsolutions.pastfootsteps.client.compat.EvenMoBendsCompat;
 import org.fentanylsolutions.pastfootsteps.config.Config;
@@ -138,7 +139,7 @@ public final class FootstepController implements IResourceManagerReloadListener 
         World sourceWorld = state.actor.worldObj;
         return state.fallSounds.defer(sourceWorld.getTotalWorldTime(), state.generation, x, y, z, () -> {
             Minecraft mc = Minecraft.getMinecraft();
-            if (mc.theWorld != sourceWorld) return;
+            if (mc.theWorld != sourceWorld || ActorSilencers.isSilenced(state.actor)) return;
             String restoredName = name;
             if (entityEvent) {
                 PlaySoundAtEntityEvent event = new PlaySoundAtEntityEvent(state.actor, name, volume, pitch);
@@ -788,7 +789,8 @@ public final class FootstepController implements IResourceManagerReloadListener 
             actor == Minecraft.getMinecraft().thePlayer,
             () -> state.active && state.generation == generation
                 && eligible(actor)
-                && actor.worldObj.getEntityByID(actor.getEntityId()) == actor)
+                && actor.worldObj.getEntityByID(actor.getEntityId()) == actor
+                && !ActorSilencers.isSilenced(actor))
                     .withCategory(ActorSound.category(actor instanceof EntityPlayer, actor instanceof IMob));
     }
 
