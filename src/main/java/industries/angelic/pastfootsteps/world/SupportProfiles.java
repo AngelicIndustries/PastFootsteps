@@ -100,7 +100,7 @@ final class SupportProfiles {
         Map<String, Rule> replacements = new LinkedHashMap<String, Rule>();
         for (Map.Entry<String, JsonElement> entry : entities.entrySet()) {
             if (!entry.getKey()
-                .matches("[A-Za-z0-9_.:-]{1,128}"))
+                .matches("[A-Za-z0-9_.:|-]{1,128}")) // entity names, ProjectZulu|Core.Armadillo among them
                 throw new JsonParseException("Invalid support entity ID " + entry.getKey());
             replacements.put(entry.getKey(), new Rule(JsonData.object(entry.getValue())));
         }

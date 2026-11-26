@@ -37,6 +37,17 @@ public class EquipmentSoundsTest {
     }
 
     @Test
+    public void itemIdsWithAPipeInTheModIdAreAccepted() {
+        Map<String, String> categories = new HashMap<String, String>();
+        EquipmentSounds.applyLayer(
+            new StringReader(
+                "{\"schemaVersion\":1,\"items\":{\"ProjectZulu|Core:BlueClothBoots\":{\"category\":\"light\"}}}"),
+            "pipe",
+            categories);
+        assertEquals("light", categories.get("ProjectZulu|Core:BlueClothBoots"));
+    }
+
+    @Test
     public void scalarAndUnknownOverrideFormsAreRejected() {
         assertRejected("{\"schemaVersion\":1,\"items\":{\"example:boots\":\"heavy\"}}");
         assertRejected("{\"schemaVersion\":1,\"items\":{\"example:boots\":{\"category\":\"nope\"}}}");

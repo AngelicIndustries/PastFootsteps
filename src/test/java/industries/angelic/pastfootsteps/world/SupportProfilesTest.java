@@ -32,6 +32,15 @@ public class SupportProfilesTest {
     }
 
     @Test
+    public void entityNamesWithAPipeInTheModIdAreAccepted() throws Exception {
+        Map<String, SupportProfiles.Rule> rules = new LinkedHashMap<String, SupportProfiles.Rule>();
+        SupportProfiles.apply(
+            rules,
+            json("{\"schemaVersion\":1,\"entities\":{\"ProjectZulu|Core.Armadillo\":{\"material\":\"wood\"}}}"));
+        assertEquals("wood", rules.get("ProjectZulu|Core.Armadillo").material);
+    }
+
+    @Test
     public void invalidLayerDoesNotPartiallyReplaceExistingRules() throws Exception {
         Map<String, SupportProfiles.Rule> rules = new LinkedHashMap<String, SupportProfiles.Rule>();
         SupportProfiles.apply(rules, json("{\"schemaVersion\":1,\"entities\":{\"Boat\":{\"material\":\"wood\"}}}"));

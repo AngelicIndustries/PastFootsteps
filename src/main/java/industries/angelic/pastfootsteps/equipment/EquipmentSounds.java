@@ -233,7 +233,8 @@ public final class EquipmentSounds {
         for (Map.Entry<String, JsonElement> entry : root.getAsJsonObject("items")
             .entrySet()) {
             String id = entry.getKey();
-            if (!id.matches("[A-Za-z0-9_.:-]{1,128}")) throw new JsonParseException("Invalid item ID " + id);
+            // Registry names, which can carry a pipe in the mod ID (ProjectZulu|Core:BlueClothBoots).
+            if (!id.matches("[A-Za-z0-9_.:|-]{1,128}")) throw new JsonParseException("Invalid item ID " + id);
             if (!entry.getValue()
                 .isJsonObject()) throw new JsonParseException(label + ".items." + id + " must be an object");
             JsonObject value = entry.getValue()
